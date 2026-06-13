@@ -26,7 +26,7 @@ export async function generateBatch(
   _prevState: GenerateState,
   formData: FormData
 ): Promise<GenerateState> {
-  const session = await requireRole("ADMIN")
+  const { user } = await requireRole("ADMIN")
 
   const parsed = GenerateSchema.safeParse({
     quantity: formData.get("quantity"),
@@ -77,7 +77,7 @@ export async function generateBatch(
         prefix,
         quantity,
         source: "GENERATED",
-        createdByUserId: session.user.id,
+        createdByUserId: user.id,
       },
     })
     await tx.qRToken.createMany({
@@ -85,15 +85,11 @@ export async function generateBatch(
         token,
         batchId: created.id,
         status: "AVAILABLE" as const,
-        generatedByUserId: session.user.id,
+        generatedByUserId: user.id,
       })),
     })
+    await writeAuditLog(user.id, "GENERATE_BATCH", "QRTokenBatch", created.id, { quantity, prefix }, tx)
     return created
-  })
-
-  await writeAuditLog(session.user.id, "GENERATE_BATCH", "QRTokenBatch", batch.id, {
-    quantity,
-    prefix,
   })
 
   revalidatePath("/admin/qr-tokens")

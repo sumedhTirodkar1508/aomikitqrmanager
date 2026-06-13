@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth-helpers"
+import { requireAnyRole } from "@/lib/auth-helpers"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export const metadata = { title: "Seller Panel — AOMI Kit QR Manager" }
 
 export default async function SellerPage() {
-  const session = await requireAuth()
+  const session = await requireAnyRole("SELLER", "ADMIN")
 
   const recent = await prisma.package.findMany({
     where: { createdByUserId: session.user.id },

@@ -99,11 +99,12 @@ export default function AssignFlow({ diagnoses }: { diagnoses: Diagnosis[] }) {
   }
 
   function handleConfirm() {
-    if (!tokenId || !routineId) return
+    if (!tokenId || !routineId || !diagnosisId) return
     startTransition(async () => {
       const res = await confirmAssignment({
         tokenId,
         routineId,
+        diagnosisId,
         selections: Object.entries(selections).map(([stepId, productId]) => ({
           stepId,
           productId,
@@ -201,7 +202,15 @@ export default function AssignFlow({ diagnoses }: { diagnoses: Diagnosis[] }) {
               <Label htmlFor="diagnosis">Select diagnosis</Label>
               <Select
                 value={diagnosisId}
-                onValueChange={setDiagnosisId}
+                onValueChange={(id) => {
+                  setDiagnosisId(id)
+                  // Clear downstream state so stale routine/preview/selections
+                  // from a previous diagnosis selection do not reach confirmAssignment.
+                  setRoutines([])
+                  setRoutineId(null)
+                  setPreview(null)
+                  setSelections({})
+                }}
                 disabled={pending}
               >
                 <SelectTrigger id="diagnosis" className="w-full">

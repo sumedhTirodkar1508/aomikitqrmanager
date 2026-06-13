@@ -10,7 +10,9 @@ x-api-key: <MOBILE_API_KEY>
 ```
 
 Missing or incorrect key → `401 Unauthorized`. If `MOBILE_API_KEY` is not set
-on the server → `503`.
+on the server → `503`. Key comparison is timing-safe (`crypto.timingSafeEqual`).
+
+All responses include `Cache-Control: no-store`.
 
 ---
 
@@ -98,7 +100,8 @@ already `ACTIVATED` token returns success without side effects.
   "externalUserId": "mobile-user-123"
 }
 ```
-`externalUserId` is optional.
+`externalUserId` is optional. `token` is trimmed and capped at 500 characters.
+`externalUserId` is trimmed and capped at 200 characters.
 
 ### Success
 ```json

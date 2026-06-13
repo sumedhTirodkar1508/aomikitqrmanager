@@ -64,6 +64,57 @@ function normalizeSteps(
   }))
 }
 
+// Validates diagnosis IDs, product IDs, and product/step type alignment.
+// Returns a field-error string on failure, null on success.
+async function validateNestedRefs(
+  diagnosisIds: string[],
+  steps: z.infer<typeof StepSchema>[]
+): Promise<string | null> {
+  // Duplicate diagnosis IDs.
+  if (new Set(diagnosisIds).size !== diagnosisIds.length) {
+    return "Duplicate diagnosis selected"
+  }
+
+  // All diagnosis IDs must exist and be active.
+  if (diagnosisIds.length > 0) {
+    const diagnoses = await prisma.diagnosis.findMany({
+      where: { id: { in: diagnosisIds } },
+      select: { id: true, active: true, name: true },
+    })
+    const diagMap = new Map(diagnoses.map((d) => [d.id, d]))
+    for (const id of diagnosisIds) {
+      const d = diagMap.get(id)
+      if (!d) return `Diagnosis not found: ${id}`
+      if (!d.active) return `Diagnosis "${d.name}" is inactive`
+    }
+  }
+
+  // Collect unique product IDs referenced by steps.
+  const productIds = Array.from(
+    new Set(steps.map((s) => s.defaultProductId).filter((id): id is string => !!id))
+  )
+
+  if (productIds.length > 0) {
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, active: true, name: true, stepType: true },
+    })
+    const productMap = new Map(products.map((p) => [p.id, p]))
+
+    for (const step of steps) {
+      if (!step.defaultProductId) continue
+      const p = productMap.get(step.defaultProductId)
+      if (!p) return `Product not found: ${step.defaultProductId}`
+      if (!p.active) return `Product "${p.name}" is inactive`
+      if (p.stepType !== step.stepType) {
+        return `Product "${p.name}" has step type ${p.stepType} but is assigned to a ${step.stepType} step`
+      }
+    }
+  }
+
+  return null
+}
+
 export async function createRoutine(
   _prevState: RoutineActionState,
   formData: FormData
@@ -82,6 +133,9 @@ export async function createRoutine(
     select: { id: true },
   })
   if (!routineType) return { error: "Selected routine type does not exist" }
+
+  const nestedError = await validateNestedRefs(data.diagnosisIds, data.steps)
+  if (nestedError) return { error: nestedError }
 
   const steps = normalizeSteps(data.steps)
 
@@ -127,6 +181,15 @@ export async function updateRoutine(
     select: { id: true },
   })
   if (!existing) return { error: "Routine not found" }
+
+  const routineType = await prisma.routineType.findUnique({
+    where: { id: data.routineTypeId },
+    select: { id: true },
+  })
+  if (!routineType) return { error: "Selected routine type does not exist" }
+
+  const nestedError = await validateNestedRefs(data.diagnosisIds, data.steps)
+  if (nestedError) return { error: nestedError }
 
   const steps = normalizeSteps(data.steps)
 

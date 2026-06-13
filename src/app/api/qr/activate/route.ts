@@ -4,9 +4,11 @@ import { prisma } from "@/lib/prisma"
 import { checkMobileApiKey } from "@/lib/mobile-api"
 import { normalizeToken } from "@/lib/token"
 
+const NO_STORE = { "Cache-Control": "no-store" } as const
+
 const BodySchema = z.object({
-  token: z.string().min(1),
-  externalUserId: z.string().max(200).optional(),
+  token: z.string().trim().min(1).max(500),
+  externalUserId: z.string().trim().max(200).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -17,14 +19,17 @@ export async function POST(req: NextRequest) {
   try {
     json = await req.json()
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Invalid JSON body" },
+      { status: 400, headers: NO_STORE }
+    )
   }
 
   const parsed = BodySchema.safeParse(json)
   if (!parsed.success) {
     return NextResponse.json(
       { error: "token is required" },
-      { status: 400 }
+      { status: 400, headers: NO_STORE }
     )
   }
 
@@ -36,17 +41,23 @@ export async function POST(req: NextRequest) {
     include: { package: { select: { id: true } } },
   })
   if (!record) {
-    return NextResponse.json({ error: "Token not found" }, { status: 404 })
+    return NextResponse.json(
+      { error: "Token not found" },
+      { status: 404, headers: NO_STORE }
+    )
   }
 
   // Idempotent: already activated.
   if (record.status === "ACTIVATED") {
-    return NextResponse.json({
-      token: record.token,
-      status: "ACTIVATED",
-      activatedAt: record.activatedAt,
-      message: "Token already activated",
-    })
+    return NextResponse.json(
+      {
+        token: record.token,
+        status: "ACTIVATED",
+        activatedAt: record.activatedAt,
+        message: "Token already activated",
+      },
+      { headers: NO_STORE }
+    )
   }
 
   if (record.status !== "ASSIGNED") {
@@ -56,7 +67,7 @@ export async function POST(req: NextRequest) {
         status: record.status,
         error: `Token cannot be activated from status ${record.status}`,
       },
-      { status: 409 }
+      { status: 409, headers: NO_STORE }
     )
   }
 
@@ -108,18 +119,24 @@ export async function POST(req: NextRequest) {
       where: { id: record.id },
       select: { token: true, status: true, activatedAt: true },
     })
-    return NextResponse.json({
-      token: fresh?.token ?? token,
-      status: fresh?.status ?? "ACTIVATED",
-      activatedAt: fresh?.activatedAt ?? null,
-      message: "Token already activated",
-    })
+    return NextResponse.json(
+      {
+        token: fresh?.token ?? token,
+        status: fresh?.status ?? "ACTIVATED",
+        activatedAt: fresh?.activatedAt ?? null,
+        message: "Token already activated",
+      },
+      { headers: NO_STORE }
+    )
   }
 
-  return NextResponse.json({
-    token: result.updated?.token ?? token,
-    status: result.updated?.status ?? "ACTIVATED",
-    activatedAt: result.updated?.activatedAt ?? null,
-    message: "Token activated",
-  })
+  return NextResponse.json(
+    {
+      token: result.updated?.token ?? token,
+      status: result.updated?.status ?? "ACTIVATED",
+      activatedAt: result.updated?.activatedAt ?? null,
+      message: "Token activated",
+    },
+    { headers: NO_STORE }
+  )
 }

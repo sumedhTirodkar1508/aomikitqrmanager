@@ -52,16 +52,23 @@ Sign in at `/login`. Admins land on `/admin`, sellers on `/seller`.
 - `npm run db:migrate` — run `prisma migrate dev`
 - `npm run db:seed` — run the seed script
 - `npm run db:studio` — open Prisma Studio
+- `npm run test:qr-import` — QR import integration tests (requires DB)
+- `npm run test:correctness` — auth + data invariant tests (requires DB)
+- `npm run test:phase2` — API hardening + upload unit tests
+- `npm run test:export` — CSV export streaming unit tests
 
 ## Project notes
 
 - The Prisma client is generated to `src/generated/prisma`. Import it via
   `@/generated/prisma/client`, **never** `@prisma/client`.
-- All Server Actions begin with `requireRole("ADMIN")` or `requireAuth()`.
+- Admin Server Actions call `requireRole("ADMIN")`; seller Server Actions call
+  `requireAnyRole("SELLER", "ADMIN")`. Both roles may use the assignment flow.
 - QR token state transitions use `updateMany` with a status guard so concurrent
   assignment/activation cannot clobber each other.
 - The Supabase service-role key is confined to `src/lib/supabase-server.ts` and
   must never be imported from a client component.
+- `next-auth` is pinned to an exact beta version (`5.0.0-beta.31`). Migration
+  to stable is a future controlled task.
 
 ## Documentation
 
