@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Menu } from "lucide-react"
+import { Menu, QrCode } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet"
 import { AdminNavLinks } from "./admin-nav"
@@ -15,7 +15,7 @@ export function AdminMobileNav({ email }: AdminMobileNavProps) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="flex h-14 items-center justify-between border-b border-zinc-200 bg-white px-4 dark:border-zinc-800 dark:bg-zinc-900 md:hidden sticky top-0 z-30">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-sidebar-border bg-sidebar px-4 text-sidebar-foreground shadow-sm md:hidden">
       <div className="flex items-center gap-2">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
@@ -23,11 +23,14 @@ export function AdminMobileNav({ email }: AdminMobileNavProps) {
               <Menu className="size-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="flex w-64 flex-col justify-between p-4 bg-white dark:bg-zinc-900 border-r dark:border-zinc-800">
-            <div className="space-y-4">
-              <SheetHeader className="text-left border-b pb-4 dark:border-zinc-850">
-                <SheetTitle className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-                  AOMI Kit — Admin
+          <SheetContent side="left" className="flex w-[19rem] flex-col justify-between bg-sidebar p-4 text-sidebar-foreground">
+            <div className="space-y-6">
+              <SheetHeader className="border-b border-sidebar-border px-2 pb-5 pt-2 text-left">
+                <SheetTitle className="flex items-center gap-3 text-base font-semibold text-sidebar-foreground">
+                  <span className="flex size-9 items-center justify-center rounded-2xl bg-sidebar-primary text-sidebar-primary-foreground">
+                    <QrCode className="size-4" />
+                  </span>
+                  AOMI Kit Admin
                 </SheetTitle>
                 <SheetDescription className="sr-only">
                   Navigation menu for admin section.
@@ -35,8 +38,8 @@ export function AdminMobileNav({ email }: AdminMobileNavProps) {
               </SheetHeader>
               <AdminNavLinks onLinkClick={() => setOpen(false)} />
             </div>
-            <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800 space-y-2">
-              <div className="px-3 text-xs text-zinc-550 dark:text-zinc-400 truncate font-mono">
+            <div className="space-y-2 border-t border-sidebar-border pt-4">
+              <div className="truncate px-3 text-xs text-sidebar-foreground/55">
                 {email}
               </div>
               <div className="px-1">
@@ -45,10 +48,11 @@ export function AdminMobileNav({ email }: AdminMobileNavProps) {
             </div>
           </SheetContent>
         </Sheet>
-        <span className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          AOMI Kit — Admin
+        <span className="flex items-center gap-2 text-sm font-semibold">
+          <QrCode className="size-4 text-primary" />
+          AOMI Kit Admin
         </span>
       </div>
-    </div>
+    </header>
   )
 }

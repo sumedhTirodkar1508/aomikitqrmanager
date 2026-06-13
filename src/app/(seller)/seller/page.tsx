@@ -2,10 +2,11 @@ import { requireAuth } from "@/lib/auth-helpers"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { PageHeader } from "@/components/ui/page-header"
 import { EmptyState } from "@/components/ui/empty-state"
 import { QrCode, Plus } from "lucide-react"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export const metadata = { title: "Seller Panel — AOMI Kit QR Manager" }
 
@@ -23,7 +24,7 @@ export default async function SellerPage() {
   })
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="app-page">
       <PageHeader
         title="Seller Panel"
         description={`Welcome back, ${session.user.name ?? session.user.email}`}
@@ -36,11 +37,12 @@ export default async function SellerPage() {
         }
       />
 
-      <div className="space-y-3">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Recent Assignments
-        </h2>
-        
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent assignments</CardTitle>
+          <CardDescription>The 10 most recent kits assigned by your account.</CardDescription>
+        </CardHeader>
+        <CardContent>
         {recent.length === 0 ? (
           <EmptyState
             icon={QrCode}
@@ -55,21 +57,21 @@ export default async function SellerPage() {
             }
           />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 shadow-sm">
+          <div className="data-table-shell">
             <div className="w-full overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="data-table min-w-[700px]">
                 <thead>
-                  <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
-                    <th className="px-5 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                  <tr>
+                    <th className="min-w-64">
                       Token
                     </th>
-                    <th className="px-5 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                    <th className="min-w-56">
                       Routine
                     </th>
-                    <th className="px-5 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                    <th className="w-28">
                       Status
                     </th>
-                    <th className="px-5 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                    <th className="w-32">
                       Assigned
                     </th>
                   </tr>
@@ -78,18 +80,18 @@ export default async function SellerPage() {
                   {recent.map((p) => (
                     <tr
                       key={p.id}
-                      className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/40 transition-colors"
+                      className="transition-colors"
                     >
-                      <td className="px-5 py-3 font-mono text-xs text-zinc-900 dark:text-zinc-50 whitespace-nowrap font-bold">
+                      <td className="font-mono text-xs font-semibold whitespace-nowrap">
                         {p.qrToken.token}
                       </td>
-                      <td className="px-5 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                      <td className="text-muted-foreground whitespace-normal">
                         {p.template.name}
                       </td>
-                      <td className="px-5 py-3 whitespace-nowrap">
-                        <Badge variant="secondary">{p.status}</Badge>
+                      <td>
+                        <StatusBadge status={p.status} />
                       </td>
-                      <td className="px-5 py-3 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                      <td className="text-muted-foreground whitespace-nowrap">
                         {p.createdAt.toISOString().slice(0, 10)}
                       </td>
                     </tr>
@@ -99,7 +101,8 @@ export default async function SellerPage() {
             </div>
           </div>
         )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

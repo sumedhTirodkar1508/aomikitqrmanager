@@ -78,10 +78,10 @@ export default function ReplacementRules({
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+        <h2 className="text-sm font-semibold">
           Replacement Rules
         </h2>
-        <p className="mt-0.5 text-xs text-zinc-400">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           Products that may be swapped in for this one during assignment.
         </p>
       </div>
@@ -89,7 +89,7 @@ export default function ReplacementRules({
       {/* Add form */}
       <form
         action={addFormAction}
-        className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/50"
+        className="form-section flex flex-wrap items-end gap-3"
       >
         <div className="space-y-1.5">
           <Label htmlFor="replacementProductId">Replacement product</Label>
@@ -132,11 +132,11 @@ export default function ReplacementRules({
 
       {/* Existing rules */}
       {rules.length === 0 ? (
-        <p className="text-sm text-zinc-400 dark:text-zinc-500">
+        <p className="text-sm text-muted-foreground">
           No replacement rules.
         </p>
       ) : (
-        <ul className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 dark:divide-zinc-800/60 dark:border-zinc-800">
+        <ul className="divide-y divide-border overflow-hidden rounded-3xl border border-border">
           {rules.map((rule) => (
             <li
               key={rule.id}
@@ -144,11 +144,11 @@ export default function ReplacementRules({
             >
               <div className="flex items-center gap-3">
                 <Badge variant="secondary">{rule.stepType}</Badge>
-                <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                <span className="text-sm font-medium">
                   {rule.replacement.name}
                 </span>
                 {rule.replacement.sku && (
-                  <span className="font-mono text-xs text-zinc-400">
+                  <span className="font-mono text-xs text-muted-foreground">
                     {rule.replacement.sku}
                   </span>
                 )}
@@ -160,7 +160,7 @@ export default function ReplacementRules({
                   variant="ghost"
                   size="sm"
                   disabled={deleting}
-                  className="text-red-600 hover:text-red-700 dark:text-red-400"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
                   Remove
                 </Button>

@@ -25,8 +25,8 @@ export function AdminFormSheet({ open, title, description, closeUrl, children, c
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent className={cn("flex h-full flex-col gap-0 p-0", className)}>
-        <SheetHeader className="shrink-0 border-b px-6 py-5 flex flex-col gap-1">
+      <SheetContent className={cn("flex h-full w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden border-l border-border p-0 sm:w-full", className)}>
+        <SheetHeader className="shrink-0 border-b border-border/70 bg-card px-6 py-5 pr-16">
           <SheetTitle className="text-lg font-semibold">{title}</SheetTitle>
           <SheetDescription className="text-sm">{description}</SheetDescription>
         </SheetHeader>

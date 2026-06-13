@@ -21,6 +21,8 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { toggleRoutineActive, createRoutine, updateRoutine } from "./actions"
 import RoutineForm from "./_components/routine-form"
 import type { Prisma, StepType } from "@/generated/prisma/client"
+import { Input } from "@/components/ui/input"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 export const metadata = { title: "Routines — AOMI Kit Admin" }
 
@@ -121,7 +123,7 @@ export default async function RoutinesPage({
   const formAction = editItem ? updateRoutine.bind(null, editItem.id) : createRoutine
 
   return (
-    <div className="space-y-6">
+    <div className="app-page">
       <PageHeader
         title="Routines"
         description={
@@ -139,17 +141,17 @@ export default async function RoutinesPage({
       />
 
       {/* Filters */}
-      <form method="GET" className="flex flex-wrap gap-2">
-        <input
+      <form method="GET" className="filter-bar">
+        <Input
           name="q"
           defaultValue={q ?? ""}
           placeholder="Search routines…"
-          className="h-8 w-56 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+          className="min-w-0 flex-1 sm:min-w-52"
         />
         <select
           name="type"
           defaultValue={type ?? ""}
-          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none dark:bg-input/30"
+          className="h-9 w-full rounded-3xl border-0 bg-input/50 px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/30 sm:w-48"
         >
           <option value="">All types</option>
           {routineTypes.map((rt) => (
@@ -161,7 +163,7 @@ export default async function RoutinesPage({
         <select
           name="status"
           defaultValue={status ?? ""}
-          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none dark:bg-input/30"
+          className="h-9 w-full rounded-3xl border-0 bg-input/50 px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/30 sm:w-40"
         >
           <option value="">All statuses</option>
           <option value="active">Active</option>
@@ -205,27 +207,27 @@ export default async function RoutinesPage({
           />
         )
       ) : (
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 shadow-sm">
+        <div className="data-table-shell">
           <div className="w-full overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="data-table min-w-[880px]">
               <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
-                  <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                <tr>
+                  <th className="min-w-64">
                     Name
                   </th>
-                  <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                  <th className="min-w-44">
                     Type
                   </th>
-                  <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                  <th className="w-20 text-center">
                     Steps
                   </th>
-                  <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                  <th className="w-24 text-center">
                     Diagnoses
                   </th>
-                  <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                  <th className="w-28">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                  <th className="w-36 text-right">
                     Actions
                   </th>
                 </tr>
@@ -234,9 +236,9 @@ export default async function RoutinesPage({
                 {routines.map((r) => (
                   <tr
                     key={r.id}
-                    className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/40 transition-colors"
+                    className="transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50 whitespace-nowrap">
+                    <td className="font-medium whitespace-normal">
                       <Link
                         href={`/admin/routines/${r.id}`}
                         className="hover:underline"
@@ -244,28 +246,20 @@ export default async function RoutinesPage({
                         {r.name}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-zinc-605 dark:text-zinc-400 whitespace-nowrap">
+                    <td className="text-muted-foreground whitespace-normal">
                       {r.routineType.name}
                     </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                    <td className="text-center text-muted-foreground">
                       {r._count.steps}
                     </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                    <td className="text-center text-muted-foreground">
                       {r._count.diagnoses}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span
-                        className={
-                          r.active
-                            ? "inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                            : "inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-550 dark:bg-zinc-800 dark:text-zinc-400"
-                        }
-                      >
-                        {r.active ? "Active" : "Inactive"}
-                      </span>
+                    <td>
+                      <StatusBadge status={r.active ? "ACTIVE" : "INACTIVE"} />
                     </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1">
+                    <td className="text-right">
+                      <div className="table-actions">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" asChild aria-label="View Routine Detail Page">
@@ -298,8 +292,8 @@ export default async function RoutinesPage({
                                     size="icon"
                                     className={
                                       r.active
-                                        ? "text-red-650 hover:text-red-755 dark:text-red-400"
-                                        : "text-emerald-605 hover:text-emerald-700 dark:text-emerald-400"
+                                        ? "text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                        : "text-success-foreground hover:bg-success"
                                     }
                                     aria-label={r.active ? "Deactivate Routine" : "Activate Routine"}
                                   >
@@ -323,7 +317,7 @@ export default async function RoutinesPage({
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <form action={toggleRoutineActive}>
                                 <input type="hidden" name="id" value={r.id} />
-                                <AlertDialogAction type="submit">
+                                <AlertDialogAction type="submit" variant={r.active ? "destructive" : "default"}>
                                   {r.active ? "Deactivate" : "Activate"}
                                 </AlertDialogAction>
                               </form>

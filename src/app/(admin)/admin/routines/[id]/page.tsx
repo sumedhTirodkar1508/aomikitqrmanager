@@ -5,6 +5,9 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { updateRoutine, toggleRoutineActive } from "../actions"
 import RoutineForm from "../_components/routine-form"
+import { PageHeader } from "@/components/ui/page-header"
+import { Card, CardContent } from "@/components/ui/card"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 export async function generateMetadata({
   params,
@@ -78,20 +81,22 @@ export default async function EditRoutinePage({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <nav className="mb-1 text-xs text-zinc-500 dark:text-zinc-400">
+    <div className="app-page">
+      <PageHeader
+        title={routine.name}
+        description={
+          <div className="space-y-2">
+          <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground">
             <Link href="/admin/routines" className="hover:underline">
               Routines
             </Link>
             {" / "}
             <span>{routine.name}</span>
           </nav>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-            {routine.name}
-          </h1>
-        </div>
+          <StatusBadge status={routine.active ? "ACTIVE" : "INACTIVE"} />
+          </div>
+        }
+        action={
         <form action={toggleRoutineActive}>
           <input type="hidden" name="id" value={routine.id} />
           <Button
@@ -100,16 +105,18 @@ export default async function EditRoutinePage({
             size="sm"
             className={
               routine.active
-                ? "text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900 dark:hover:bg-red-950"
-                : "text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-900 dark:hover:bg-emerald-950"
+                ? "border-destructive/25 text-destructive hover:bg-destructive/10"
+                : "border-success text-success-foreground hover:bg-success"
             }
           >
             {routine.active ? "Deactivate" : "Activate"}
           </Button>
         </form>
-      </div>
+        }
+      />
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <Card>
+        <CardContent>
         <RoutineForm
           action={action}
           routineTypes={routineTypes}
@@ -118,7 +125,8 @@ export default async function EditRoutinePage({
           defaults={defaults}
           submitLabel="Save changes"
         />
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

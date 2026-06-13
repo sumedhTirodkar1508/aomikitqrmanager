@@ -9,22 +9,23 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, action, className }: PageHeaderProps) {
   return (
-    <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-100 dark:border-zinc-900 pb-5 mb-6", className)}>
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+    <header className={cn("flex flex-col gap-4 border-b border-border/70 pb-6 sm:flex-row sm:items-end sm:justify-between", className)}>
+      <div className="max-w-3xl space-y-1.5">
+        <p className="section-label">AOMI Kit</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
           {title}
         </h1>
         {description && (
-          <div className="text-sm text-zinc-500 dark:text-zinc-400">
+          <div className="text-sm leading-6 text-muted-foreground">
             {description}
           </div>
         )}
       </div>
       {action && (
-        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 self-start sm:self-auto">
           {action}
         </div>
       )}
-    </div>
+    </header>
   )
 }

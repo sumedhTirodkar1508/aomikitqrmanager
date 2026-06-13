@@ -1,7 +1,7 @@
 import { requireRole } from "@/lib/auth-helpers"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import VoidTokenButton from "./_components/void-token-button"
 import type { Prisma, QRTokenStatus } from "@/generated/prisma/client"
 import {
@@ -35,6 +35,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 export const metadata = { title: "QR Tokens — AOMI Kit Admin" }
 
@@ -45,19 +46,6 @@ const STATUSES: QRTokenStatus[] = [
   "VOIDED",
   "REPLACED",
 ]
-
-const statusStyles: Record<string, string> = {
-  AVAILABLE:
-    "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200/50",
-  ASSIGNED:
-    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200/50",
-  ACTIVATED:
-    "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200/50",
-  VOIDED:
-    "bg-zinc-100 text-zinc-500 dark:bg-zinc-850 dark:text-zinc-400 border-zinc-200/50",
-  REPLACED:
-    "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200/50",
-}
 
 function getPaginationRange(current: number, total: number) {
   const pages: (number | string)[] = []
@@ -242,12 +230,12 @@ export default async function QrTokensPage({
   const sheetCloseUrl = `/admin/qr-tokens?${sheetCloseQs.toString()}`
 
   return (
-    <div className="space-y-6">
+    <div className="app-page">
       <PageHeader
         title="QR Tokens"
         description="Manage product tokens, import logs, and activation lifecycles"
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" asChild>
               <a href={`/api/admin/qr-tokens/export?${exportQs.toString()}`}>
                 <Download className="mr-2 size-4" /> Export CSV
@@ -268,61 +256,61 @@ export default async function QrTokensPage({
       />
 
       {/* Prominent Statistics Grid — always visible above filter controls */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <Card className="border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 shadow-sm">
-          <CardContent className="p-4 flex items-start justify-between">
-            <div className="space-y-1 flex-1 pr-2">
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">{primaryCardTitle}</span>
-              <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{totalCount}</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+        <Card className="kpi-card bg-primary text-primary-foreground">
+          <CardContent>
+            <div className="min-w-0 flex-1 space-y-1">
+              <span className="kpi-label text-primary-foreground/75">{primaryCardTitle}</span>
+              <p className="kpi-value">{totalCount}</p>
               {primaryCardSubtitle && (
-                <p className="text-[10px] text-zinc-400 uppercase tracking-wider mt-1 truncate" title={primaryCardSubtitle}>{primaryCardSubtitle}</p>
+                <p className="kpi-caption truncate text-primary-foreground/65" title={primaryCardSubtitle}>{primaryCardSubtitle}</p>
               )}
             </div>
-            <Layers className="size-6 text-zinc-400 shrink-0 mt-1" />
+            <Layers className="mt-1 size-6 shrink-0 text-primary-foreground/70" />
           </CardContent>
         </Card>
 
-        <Card className="border-blue-200/60 bg-blue-50/20 dark:border-blue-900/50 dark:bg-blue-950/10 shadow-sm">
-          <CardContent className="p-4 flex items-start justify-between">
+        <Card className="kpi-card bg-success text-success-foreground">
+          <CardContent>
             <div className="space-y-1">
-              <span className="text-xs font-semibold text-blue-600/80 dark:text-blue-400 uppercase tracking-wide">Available</span>
-              <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{stats.AVAILABLE}</p>
-              <p className="text-[10px] text-blue-500/70 dark:text-blue-400/80 uppercase tracking-wider mt-1">Across all batches</p>
+              <span className="kpi-label">Available</span>
+              <p className="kpi-value">{stats.AVAILABLE}</p>
+              <p className="kpi-caption">Across all batches</p>
             </div>
-            <HelpCircle className="size-6 text-blue-400 shrink-0 mt-1" />
+            <HelpCircle className="mt-1 size-6 shrink-0 opacity-60" />
           </CardContent>
         </Card>
 
-        <Card className="border-amber-200/60 bg-amber-50/20 dark:border-amber-900/50 dark:bg-amber-950/10 shadow-sm">
-          <CardContent className="p-4 flex items-start justify-between">
+        <Card className="kpi-card bg-warning text-warning-foreground">
+          <CardContent>
             <div className="space-y-1">
-              <span className="text-xs font-semibold text-amber-600/80 dark:text-amber-400 uppercase tracking-wide">Assigned</span>
-              <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{stats.ASSIGNED}</p>
-              <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70 uppercase tracking-wider mt-1">Across all batches</p>
+              <span className="kpi-label">Assigned</span>
+              <p className="kpi-value">{stats.ASSIGNED}</p>
+              <p className="kpi-caption">Across all batches</p>
             </div>
-            <FileText className="size-6 text-amber-400 shrink-0 mt-1" />
+            <FileText className="mt-1 size-6 shrink-0 opacity-60" />
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-200/60 bg-emerald-50/20 dark:border-emerald-900/50 dark:bg-emerald-950/10 shadow-sm">
-          <CardContent className="p-4 flex items-start justify-between">
+        <Card className="kpi-card bg-success-foreground text-success">
+          <CardContent>
             <div className="space-y-1">
-              <span className="text-xs font-semibold text-emerald-600/80 dark:text-emerald-400 uppercase tracking-wide">Activated</span>
-              <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{stats.ACTIVATED}</p>
-              <p className="text-[10px] text-emerald-600/70 dark:text-emerald-500/70 uppercase tracking-wider mt-1">Across all batches</p>
+              <span className="kpi-label">Activated</span>
+              <p className="kpi-value">{stats.ACTIVATED}</p>
+              <p className="kpi-caption">Across all batches</p>
             </div>
-            <CheckCircle className="size-6 text-emerald-400 shrink-0 mt-1" />
+            <CheckCircle className="mt-1 size-6 shrink-0 opacity-60" />
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 shadow-sm">
-          <CardContent className="p-4 flex items-start justify-between">
+        <Card className="kpi-card bg-destructive/8 text-destructive">
+          <CardContent>
             <div className="space-y-1">
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Voided</span>
-              <p className="text-2xl font-bold text-zinc-600 dark:text-zinc-400">{stats.VOIDED}</p>
-              <p className="text-[10px] text-zinc-400 uppercase tracking-wider mt-1">Across all batches</p>
+              <span className="kpi-label">Voided</span>
+              <p className="kpi-value">{stats.VOIDED}</p>
+              <p className="kpi-caption">Across all batches</p>
             </div>
-            <Activity className="size-6 text-zinc-400 shrink-0 mt-1" />
+            <Activity className="mt-1 size-6 shrink-0 opacity-65" />
           </CardContent>
         </Card>
       </div>
@@ -364,24 +352,24 @@ export default async function QrTokensPage({
             />
           )
         ) : (
-          <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 shadow-sm">
+          <div className="data-table-shell">
             <div className="w-full overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="data-table min-w-[880px]">
                 <thead>
-                  <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
-                    <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                  <tr>
+                    <th className="min-w-80">
                       Token
                     </th>
-                    <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                    <th className="w-32">
                       Status
                     </th>
-                    <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                    <th className="min-w-48">
                       Batch
                     </th>
-                    <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                    <th className="w-32">
                       Created
                     </th>
-                    <th className="px-4 py-3 text-right font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                    <th className="w-24 text-right">
                       Actions
                     </th>
                   </tr>
@@ -390,9 +378,9 @@ export default async function QrTokensPage({
                   {tokens.map((t) => (
                     <tr
                       key={t.id}
-                      className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/40 transition-colors"
+                      className="transition-colors"
                     >
-                      <td className="px-4 py-3 font-mono text-xs text-zinc-900 dark:text-zinc-50 whitespace-nowrap">
+                      <td className="max-w-sm whitespace-normal break-all font-mono text-xs font-semibold">
                         <Link
                           href={`/admin/qr-tokens?tokenDetails=${t.id}&${sheetCloseQs.toString()}`}
                           className="hover:underline cursor-pointer"
@@ -400,33 +388,24 @@ export default async function QrTokensPage({
                           {t.token}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span
-                          className={
-                            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border " +
-                            (statusStyles[t.status] ?? "")
-                          }
-                        >
-                          {t.status}
-                        </span>
+                      <td>
+                        <StatusBadge status={t.status} />
                       </td>
-                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                      <td className="whitespace-normal text-muted-foreground">
                         {t.batch?.batchName ?? (t.batchId ? t.batchId.slice(0, 8) : "—")}
                       </td>
-                      <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                      <td className="text-muted-foreground whitespace-nowrap">
                         {t.createdAt.toISOString().slice(0, 10)}
                       </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1">
+                      <td className="text-right">
+                        <div className="table-actions">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Link
-                                href={`/admin/qr-tokens?tokenDetails=${t.id}&${sheetCloseQs.toString()}`}
-                                aria-label="View Token Details"
-                                className={buttonVariants({ variant: "ghost", size: "icon" })}
-                              >
-                                <Eye className="size-4" />
-                              </Link>
+                              <Button variant="ghost" size="icon" asChild aria-label="View Token Details">
+                                <Link href={`/admin/qr-tokens?tokenDetails=${t.id}&${sheetCloseQs.toString()}`}>
+                                  <Eye className="size-4" />
+                                </Link>
+                              </Button>
                             </TooltipTrigger>
                             <TooltipContent>Token Details</TooltipContent>
                           </Tooltip>
@@ -445,8 +424,8 @@ export default async function QrTokensPage({
         )}
 
         {/* Pagination Footer */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-sm text-zinc-500">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-4 text-sm text-muted-foreground lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-4">
             <span>
               Showing {totalCount === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalCount)} of {totalCount}
             </span>
@@ -530,26 +509,24 @@ export default async function QrTokensPage({
           <div className="flex flex-1 flex-col min-h-0">
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 space-y-6">
               {/* Token Code Header */}
-              <div className="rounded-lg border bg-zinc-50/50 p-4 dark:bg-zinc-900/50 space-y-1">
-                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Token Code</span>
-                <div className="font-mono text-xl font-bold tracking-wider text-zinc-900 dark:text-zinc-50 select-all p-3 bg-white dark:bg-zinc-950 rounded border border-zinc-200 dark:border-zinc-800">
+              <div className="form-section">
+                <span className="section-label">Token Code</span>
+                <div className="select-all rounded-2xl bg-background p-3 font-mono text-xl font-bold tracking-wider ring-1 ring-border">
                   {detailedToken.token}
                 </div>
               </div>
 
               {/* Status & Created Date grid */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-lg border p-4 space-y-1">
-                  <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Lifecycle Status</span>
+                <div className="form-section">
+                  <span className="section-label">Lifecycle Status</span>
                   <div className="pt-1">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border ${statusStyles[detailedToken.status]}`}>
-                      {detailedToken.status}
-                    </span>
+                    <StatusBadge status={detailedToken.status} />
                   </div>
                 </div>
-                <div className="rounded-lg border p-4 space-y-1">
-                  <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Created At</span>
-                  <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                <div className="form-section">
+                  <span className="section-label">Created At</span>
+                  <div className="text-sm font-semibold">
                     {new Date(detailedToken.createdAt).toLocaleString("en-US", {
                       dateStyle: "medium",
                       timeStyle: "short",
@@ -559,48 +536,48 @@ export default async function QrTokensPage({
               </div>
 
               {/* Batch Origin details Card */}
-              <div className="rounded-lg border p-4 space-y-3 bg-card text-card-foreground">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 border-b pb-1 dark:border-zinc-800">Batch Origin</h4>
+              <div className="form-section">
+                <h4 className="section-label border-b border-border pb-2">Batch Origin</h4>
                 {detailedToken.batch ? (
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                     <div>
-                      <dt className="text-xs text-zinc-400 font-medium">Batch Name</dt>
-                      <dd className="font-semibold text-zinc-800 dark:text-zinc-200 mt-0.5">{detailedToken.batch.batchName ?? "—"}</dd>
+                      <dt className="text-xs font-medium text-muted-foreground">Batch Name</dt>
+                      <dd className="mt-0.5 font-semibold">{detailedToken.batch.batchName ?? "—"}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-zinc-400 font-medium">Prefix</dt>
-                      <dd className="font-mono font-semibold text-zinc-800 dark:text-zinc-200 mt-0.5">{detailedToken.batch.prefix}</dd>
+                      <dt className="text-xs font-medium text-muted-foreground">Prefix</dt>
+                      <dd className="mt-0.5 font-mono font-semibold">{detailedToken.batch.prefix}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-zinc-400 font-medium">Source</dt>
-                      <dd className="font-semibold text-zinc-800 dark:text-zinc-200 mt-0.5">{detailedToken.batch.source}</dd>
+                      <dt className="text-xs font-medium text-muted-foreground">Source</dt>
+                      <dd className="mt-0.5 font-semibold">{detailedToken.batch.source}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-zinc-400 font-medium">Batch ID</dt>
-                      <dd className="font-mono text-xs text-zinc-450 dark:text-zinc-400 truncate mt-0.5" title={detailedToken.batch.id}>{detailedToken.batch.id}</dd>
+                      <dt className="text-xs font-medium text-muted-foreground">Batch ID</dt>
+                      <dd className="mt-0.5 truncate font-mono text-xs text-muted-foreground" title={detailedToken.batch.id}>{detailedToken.batch.id}</dd>
                     </div>
                   </dl>
                 ) : (
-                  <p className="text-xs text-zinc-500 italic">Independent token (no batch origin).</p>
+                  <p className="text-xs italic text-muted-foreground">Independent token (no batch origin).</p>
                 )}
               </div>
 
               {/* Package assignment details Card */}
-              <div className="rounded-lg border p-4 space-y-3 bg-card text-card-foreground">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 border-b pb-1 dark:border-zinc-800">Routine Assignment</h4>
+              <div className="form-section">
+                <h4 className="section-label border-b border-border pb-2">Routine Assignment</h4>
                 {detailedToken.package ? (
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                     <div className="col-span-2">
-                      <dt className="text-xs text-zinc-400 font-medium">Active Routine Template</dt>
-                      <dd className="font-bold text-zinc-800 dark:text-zinc-200 mt-0.5">{detailedToken.package.template?.name ?? "—"}</dd>
+                      <dt className="text-xs font-medium text-muted-foreground">Active Routine Template</dt>
+                      <dd className="mt-0.5 font-bold">{detailedToken.package.template?.name ?? "—"}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-zinc-400 font-medium">Package Status</dt>
-                      <dd className="font-semibold text-zinc-800 dark:text-zinc-200 mt-0.5">{detailedToken.package.status}</dd>
+                      <dt className="text-xs font-medium text-muted-foreground">Package Status</dt>
+                      <dd className="mt-0.5 font-semibold">{detailedToken.package.status}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-zinc-400 font-medium">Assigned Date</dt>
-                      <dd className="font-semibold text-zinc-800 dark:text-zinc-200 mt-0.5">
+                      <dt className="text-xs font-medium text-muted-foreground">Assigned Date</dt>
+                      <dd className="mt-0.5 font-semibold">
                         {new Date(detailedToken.package.createdAt).toLocaleString("en-US", {
                           dateStyle: "medium",
                           timeStyle: "short",
@@ -609,20 +586,20 @@ export default async function QrTokensPage({
                     </div>
                   </dl>
                 ) : (
-                  <p className="text-xs text-zinc-500 italic">Not assigned yet.</p>
+                  <p className="text-xs italic text-muted-foreground">Not assigned yet.</p>
                 )}
               </div>
 
               {/* Events Logs audit history */}
-              <div className="rounded-lg border p-4 space-y-3 bg-card text-card-foreground">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 border-b pb-1 dark:border-zinc-800">Audit Scan History</h4>
+              <div className="form-section">
+                <h4 className="section-label border-b border-border pb-2">Audit Scan History</h4>
                 {detailedToken.events && detailedToken.events.length > 0 ? (
                   <div className="space-y-3 max-h-40 overflow-y-auto pr-1">
                     {detailedToken.events.map((ev) => (
-                      <div key={ev.id} className="text-xs p-3 bg-zinc-50 dark:bg-zinc-900/40 rounded border border-zinc-100 dark:border-zinc-800 space-y-1">
+                      <div key={ev.id} className="space-y-1 rounded-2xl border border-border bg-background p-3 text-xs">
                         <div className="flex justify-between font-semibold">
-                          <span className="text-zinc-800 dark:text-zinc-100">{ev.eventType}</span>
-                          <span className="text-zinc-400 text-[10px]">
+                          <span>{ev.eventType}</span>
+                          <span className="text-[10px] text-muted-foreground">
                             {new Date(ev.createdAt).toLocaleString("en-US", {
                               dateStyle: "short",
                               timeStyle: "short",
@@ -630,22 +607,22 @@ export default async function QrTokensPage({
                           </span>
                         </div>
                         {ev.externalUserId && (
-                          <p className="text-zinc-500 text-[11px]">External User: <span className="font-mono text-[10px] select-all bg-white dark:bg-zinc-950 px-1 py-0.5 rounded border">{ev.externalUserId}</span></p>
+                          <p className="text-[11px] text-muted-foreground">External User: <span className="select-all rounded border bg-card px-1 py-0.5 font-mono text-[10px]">{ev.externalUserId}</span></p>
                         )}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-zinc-500 italic">No scans recorded.</p>
+                  <p className="text-xs italic text-muted-foreground">No scans recorded.</p>
                 )}
               </div>
 
               {/* Danger Zone */}
               {(detailedToken.status === "AVAILABLE" || detailedToken.status === "ASSIGNED") && (
-                <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50/10 p-4 space-y-3">
+                <div className="space-y-3 rounded-3xl border border-destructive/25 bg-destructive/5 p-4">
                   <div>
-                    <h4 className="text-sm font-semibold text-red-800 dark:text-red-300">Danger Zone</h4>
-                    <p className="text-xs text-red-600 dark:text-red-400">Voiding this token is permanent and cannot be undone. Associated packages will lose access.</p>
+                    <h4 className="text-sm font-semibold text-destructive">Danger Zone</h4>
+                    <p className="text-xs text-destructive/80">Voiding this token is permanent and cannot be undone. Associated packages will lose access.</p>
                   </div>
                   <VoidTokenButton id={detailedToken.id} variant="full" />
                 </div>

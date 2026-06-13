@@ -16,6 +16,7 @@ import {
 import type { ProductActionState } from "../actions"
 import type { Product } from "@/generated/prisma/client"
 import Link from "next/link"
+import { Spinner } from "@/components/ui/spinner"
 
 const STEP_TYPES = [
   "CLEANSER",
@@ -47,12 +48,12 @@ export default function ProductForm({ action, defaultValues }: Props) {
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 space-y-6">
         {/* Section: Identity */}
         <div className="space-y-4">
-          <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Product Identity</h3>
+          <h3 className="section-label">Product Identity</h3>
           <div className="grid gap-5 md:grid-cols-2">
             {/* Name */}
             <div className="space-y-2">
               <Label htmlFor="name">
-                Name <span className="text-red-500">*</span>
+                Name <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="name"
@@ -62,7 +63,7 @@ export default function ProductForm({ action, defaultValues }: Props) {
                 aria-invalid={!!state.errors?.name}
               />
               {state.errors?.name?.[0] && (
-                <p className="text-xs text-red-655 dark:text-red-405 font-medium">
+                <p className="field-error">
                   {state.errors.name[0]}
                 </p>
               )}
@@ -80,7 +81,7 @@ export default function ProductForm({ action, defaultValues }: Props) {
                 aria-invalid={!!state.errors?.sku}
               />
               {state.errors?.sku?.[0] && (
-                <p className="text-xs text-red-655 dark:text-red-405 font-medium">
+                <p className="field-error">
                   {state.errors.sku[0]}
                 </p>
               )}
@@ -90,12 +91,12 @@ export default function ProductForm({ action, defaultValues }: Props) {
 
         {/* Section: Classification */}
         <div className="space-y-4 pt-2">
-          <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Classification & Category</h3>
+          <h3 className="section-label">Classification & Category</h3>
           <div className="grid gap-5 md:grid-cols-2">
             {/* Step Type */}
             <div className="space-y-2">
               <Label htmlFor="stepType">
-                Step Type <span className="text-red-500">*</span>
+                Step Type <span className="text-destructive">*</span>
               </Label>
               <Select
                 name="stepType"
@@ -114,7 +115,7 @@ export default function ProductForm({ action, defaultValues }: Props) {
                 </SelectContent>
               </Select>
               {state.errors?.stepType?.[0] && (
-                <p className="text-xs text-red-655 dark:text-red-405 font-medium">
+                <p className="field-error">
                   {state.errors.stepType[0]}
                 </p>
               )}
@@ -136,7 +137,7 @@ export default function ProductForm({ action, defaultValues }: Props) {
 
         {/* Section: Function */}
         <div className="space-y-4 pt-2">
-          <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Function Description</h3>
+          <h3 className="section-label">Function Description</h3>
           {/* Function Description */}
           <div className="space-y-2">
             <Label htmlFor="functionDescription">Description</Label>
@@ -150,7 +151,7 @@ export default function ProductForm({ action, defaultValues }: Props) {
               className="min-h-[100px] resize-y"
             />
             {state.errors?.functionDescription?.[0] && (
-              <p className="text-xs text-red-655 dark:text-red-405 font-medium">
+              <p className="field-error">
                 {state.errors.functionDescription[0]}
               </p>
             )}
@@ -158,11 +159,12 @@ export default function ProductForm({ action, defaultValues }: Props) {
         </div>
       </div>
 
-      <SheetFooter className="shrink-0 border-t bg-background px-6 py-4 flex items-center justify-end gap-3">
+      <SheetFooter className="shrink-0 flex-row items-center justify-end gap-3 border-t border-border/70 bg-card px-6 py-4">
         <Button variant="outline" size="sm" asChild disabled={pending}>
           <Link href="/admin/products">Cancel</Link>
         </Button>
         <Button type="submit" size="sm" disabled={pending}>
+          {pending && <Spinner />}
           {pending ? "Saving…" : defaultValues ? "Save Changes" : "Create Product"}
         </Button>
       </SheetFooter>

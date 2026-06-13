@@ -20,7 +20,7 @@ export default async function AssignPage() {
       <PageHeader
         title="Assign QR Kit"
         description={
-          <nav className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Link href="/seller" className="hover:underline">
               Seller
             </Link>

@@ -95,14 +95,14 @@ export function QrTokenFilters({ batches, statuses, children }: QrTokenFiltersPr
 
   return (
     <TransitionContext.Provider value={{ isPending, startTransition }}>
-      <div className="space-y-6">
-        <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-2">
+      <div className="space-y-5">
+        <form onSubmit={handleSubmit} className="filter-bar grid grid-cols-1 sm:grid-cols-2 xl:flex">
           <Input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search token…"
             disabled={isPending}
-            className="h-8 w-48 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+            className="w-full min-w-0 xl:min-w-44 xl:flex-1"
           />
 
           <Select
@@ -110,7 +110,7 @@ export function QrTokenFilters({ batches, statuses, children }: QrTokenFiltersPr
             disabled={isPending}
             onValueChange={(val) => applyFilters(qParam, val, batchParam)}
           >
-            <SelectTrigger className="h-8 w-36 text-sm">
+            <SelectTrigger className="w-full xl:w-44">
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
             <SelectContent>
@@ -128,7 +128,7 @@ export function QrTokenFilters({ batches, statuses, children }: QrTokenFiltersPr
             disabled={isPending}
             onValueChange={(val) => applyFilters(qParam, statusParam, val)}
           >
-            <SelectTrigger className="h-8 w-48 text-sm">
+            <SelectTrigger className="w-full xl:w-56">
               <SelectValue placeholder="All batches" />
             </SelectTrigger>
             <SelectContent>
@@ -148,7 +148,7 @@ export function QrTokenFilters({ batches, statuses, children }: QrTokenFiltersPr
               size="sm"
               onClick={handleClear}
               disabled={isPending}
-              className="h-8"
+              className="justify-self-start xl:shrink-0"
             >
               Clear
             </Button>
@@ -164,7 +164,7 @@ export function QrTokenFilters({ batches, statuses, children }: QrTokenFiltersPr
           {isPending && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/5 backdrop-blur-[0.5px]">
               <div
-                className="flex items-center gap-2 rounded-lg border bg-background px-4 py-2 shadow-md animate-in fade-in zoom-in-95 duration-150"
+                className="flex items-center gap-2 rounded-full border bg-background px-4 py-2 shadow-md animate-in fade-in zoom-in-95 duration-150"
                 aria-live="polite"
                 role="status"
               >

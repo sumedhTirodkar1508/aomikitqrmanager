@@ -22,6 +22,9 @@ import {
   type RoutineOption,
   type RoutinePreview,
 } from "../actions"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Check, ChevronRight, ScanLine } from "lucide-react"
+import { Spinner } from "@/components/ui/spinner"
 
 type Diagnosis = { id: string; name: string }
 
@@ -119,42 +122,47 @@ export default function AssignFlow({ diagnoses }: { diagnoses: Diagnosis[] }) {
   const diagnosisName = diagnoses.find((d) => d.id === diagnosisId)?.name
 
   return (
-    <div className="space-y-6">
-      {/* Step indicator */}
-      <ol className="flex flex-wrap items-center gap-2 text-xs">
+    <div className="space-y-5">
+      <ol aria-label="Assignment progress" className="surface-panel flex items-center gap-1 overflow-x-auto p-2 text-xs">
         {STEPS.map((label, i) => (
-          <li key={label} className="flex items-center gap-2">
+          <li key={label} className="flex shrink-0 items-center gap-1">
             <span
               className={
-                "flex h-6 w-6 items-center justify-center rounded-full font-medium " +
+                "flex size-7 items-center justify-center rounded-full font-medium " +
                 (i < step
-                  ? "bg-emerald-600 text-white"
+                  ? "bg-success text-success-foreground"
                   : i === step
-                    ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-                    : "bg-zinc-200 text-zinc-500 dark:bg-zinc-800")
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground")
               }
             >
-              {i + 1}
+              {i < step ? <Check className="size-3.5" /> : i + 1}
             </span>
             <span
               className={
                 i === step
-                  ? "font-medium text-zinc-900 dark:text-zinc-50"
-                  : "text-zinc-400"
+                  ? "px-1 font-medium text-foreground"
+                  : "hidden px-1 text-muted-foreground sm:inline"
               }
             >
               {label}
             </span>
-            {i < STEPS.length - 1 && <span className="text-zinc-300">→</span>}
+            {i < STEPS.length - 1 && <ChevronRight className="size-3 text-muted-foreground/50" />}
           </li>
         ))}
       </ol>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <Card className="min-h-[24rem]">
         {/* STEP 1 — Token */}
         {step === 0 && (
-          <div className="max-w-md space-y-4">
-            <div className="space-y-1.5">
+          <>
+          <CardHeader>
+            <span className="icon-tile mb-2"><ScanLine className="size-5" /></span>
+            <CardTitle>Scan or enter a token</CardTitle>
+            <CardDescription>Use the printed AOMI Kit code to begin an assignment.</CardDescription>
+          </CardHeader>
+          <CardContent className="max-w-lg space-y-5">
+            <div className="space-y-2">
               <Label htmlFor="token">Scan or enter token</Label>
               <Input
                 id="token"
@@ -172,21 +180,24 @@ export default function AssignFlow({ diagnoses }: { diagnoses: Diagnosis[] }) {
                 autoFocus
               />
               {tokenError && (
-                <p className="text-sm text-red-600 dark:text-red-400">
+                <p role="alert" aria-live="polite" className="text-sm text-destructive">
                   {tokenError}
                 </p>
               )}
             </div>
             <Button onClick={handleValidateToken} disabled={pending || !tokenInput}>
+              {pending && <Spinner />}
               {pending ? "Validating…" : "Validate token"}
             </Button>
-          </div>
+          </CardContent>
+          </>
         )}
 
         {/* STEP 2 — Diagnosis */}
         {step === 1 && (
-          <div className="max-w-md space-y-4">
-            <div className="space-y-1.5">
+          <CardContent className="max-w-lg space-y-5 pt-6">
+            <div><p className="section-label">Step 2</p><h2 className="mt-1 text-xl font-semibold">Choose a diagnosis</h2><p className="mt-1 text-sm text-muted-foreground">Routines will be filtered to this skin profile.</p></div>
+            <div className="space-y-2">
               <Label htmlFor="diagnosis">Select diagnosis</Label>
               <Select
                 value={diagnosisId}
@@ -210,20 +221,22 @@ export default function AssignFlow({ diagnoses }: { diagnoses: Diagnosis[] }) {
                 Back
               </Button>
               <Button onClick={handleSelectDiagnosis} disabled={pending || !diagnosisId}>
+                {pending && <Spinner />}
                 {pending ? "Loading…" : "Find routines"}
               </Button>
             </div>
-          </div>
+          </CardContent>
         )}
 
         {/* STEP 3 — Routine */}
         {step === 2 && (
-          <div className="space-y-4">
-            <p className="text-sm text-zinc-500">
+          <CardContent className="space-y-5 pt-6">
+            <div><p className="section-label">Step 3</p><h2 className="mt-1 text-xl font-semibold">Select a routine</h2></div>
+            <p className="text-sm text-muted-foreground">
               Routines matching <strong>{diagnosisName}</strong>
             </p>
             {routines.length === 0 ? (
-              <p className="text-sm text-zinc-400">
+              <p className="rounded-2xl bg-muted p-4 text-sm text-muted-foreground">
                 No active routines for this diagnosis.
               </p>
             ) : (
@@ -234,18 +247,18 @@ export default function AssignFlow({ diagnoses }: { diagnoses: Diagnosis[] }) {
                     type="button"
                     onClick={() => handleSelectRoutine(r.id)}
                     disabled={pending}
-                    className="rounded-lg border border-zinc-200 p-4 text-left transition-colors hover:border-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:hover:border-zinc-50"
+                    className="rounded-3xl border border-border bg-background p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30 disabled:opacity-50"
                   >
-                    <div className="font-medium text-zinc-900 dark:text-zinc-50">
+                    <div className="font-medium">
                       {r.name}
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                       <Badge variant="secondary">{r.routineTypeName}</Badge>
                       <span>{r.stepCount} steps</span>
                       {r.durationDays && <span>· {r.durationDays} days</span>}
                     </div>
                     {r.description && (
-                      <p className="mt-2 line-clamp-2 text-xs text-zinc-400">
+                      <p className="mt-3 line-clamp-2 text-xs leading-5 text-muted-foreground">
                         {r.description}
                       </p>
                     )}
@@ -256,18 +269,19 @@ export default function AssignFlow({ diagnoses }: { diagnoses: Diagnosis[] }) {
             <Button variant="ghost" onClick={() => setStep(1)} disabled={pending}>
               Back
             </Button>
-          </div>
+          </CardContent>
         )}
 
         {/* STEP 4 — Review & replace */}
         {step === 3 && preview && (
-          <div className="space-y-4">
+          <CardContent className="space-y-5 pt-6">
             <div>
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              <p className="section-label">Step 4</p>
+              <h3 className="mt-1 text-xl font-semibold">
                 {preview.name}
               </h3>
               {preview.generalInstructions && (
-                <p className="mt-1 text-sm text-zinc-500">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {preview.generalInstructions}
                 </p>
               )}
@@ -277,19 +291,19 @@ export default function AssignFlow({ diagnoses }: { diagnoses: Diagnosis[] }) {
               {preview.steps.map((s) => (
                 <li
                   key={s.stepId}
-                  className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+                  className="rounded-3xl border border-border bg-muted/20 p-4"
                 >
                   <div className="mb-2 flex items-center gap-2">
-                    <span className="text-xs font-semibold text-zinc-400">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                       Step {s.stepNumber}
                     </span>
                     <Badge variant="secondary">{s.stepType}</Badge>
                   </div>
                   {s.instruction && (
-                    <p className="mb-2 text-sm text-zinc-500">{s.instruction}</p>
+                    <p className="mb-3 text-sm text-muted-foreground">{s.instruction}</p>
                   )}
                   {s.options.length === 0 ? (
-                    <p className="text-sm text-red-500">
+                    <p className="text-sm text-destructive">
                       No products available for this step.
                     </p>
                   ) : (
@@ -331,23 +345,24 @@ export default function AssignFlow({ diagnoses }: { diagnoses: Diagnosis[] }) {
                   preview.steps.some((s) => !selections[s.stepId])
                 }
               >
+                {pending && <Spinner />}
                 {pending ? "Assigning…" : "Confirm assignment"}
               </Button>
             </div>
-          </div>
+          </CardContent>
         )}
 
         {/* STEP 5 — Done */}
         {step === 4 && (
-          <div className="space-y-4 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl dark:bg-emerald-900/40">
-              ✓
+          <CardContent className="space-y-5 py-12 text-center">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-success text-success-foreground">
+              <Check className="size-6" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              <h3 className="text-xl font-semibold">
                 Kit assigned
               </h3>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Token{" "}
                 <span className="font-mono">{validatedToken}</span> is now
                 assigned.
@@ -374,9 +389,9 @@ export default function AssignFlow({ diagnoses }: { diagnoses: Diagnosis[] }) {
                 Done
               </Button>
             </div>
-          </div>
+          </CardContent>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

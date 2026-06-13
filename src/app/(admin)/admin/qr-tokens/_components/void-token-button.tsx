@@ -49,7 +49,7 @@ export default function VoidTokenButton({ id, variant = "icon" }: { id: string; 
               variant="ghost"
               size="icon"
               disabled={pending}
-              className="text-red-650 hover:text-red-700 dark:text-red-400"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
               aria-label="Void Token"
             >
               <Ban className="size-4" />
@@ -75,7 +75,7 @@ export default function VoidTokenButton({ id, variant = "icon" }: { id: string; 
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <form action={formAction}>
             <input type="hidden" name="id" value={id} />
-            <AlertDialogAction type="submit">
+            <AlertDialogAction type="submit" variant="destructive">
               Void
             </AlertDialogAction>
           </form>

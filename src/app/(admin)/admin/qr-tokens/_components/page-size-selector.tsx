@@ -26,7 +26,7 @@ export function PageSizeSelector({ currentSize }: { currentSize: number }) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-zinc-500">Rows per page:</span>
+      <span className="text-xs text-muted-foreground">Rows per page:</span>
       <Select value={String(currentSize)} onValueChange={handleChange} disabled={isPending}>
         <SelectTrigger className="h-8 w-20 text-xs">
           <SelectValue />

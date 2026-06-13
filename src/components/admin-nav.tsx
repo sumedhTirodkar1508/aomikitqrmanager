@@ -3,18 +3,26 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import {
+  Activity,
+  Boxes,
+  ClipboardList,
+  LayoutDashboard,
+  QrCode,
+  Shapes,
+} from "lucide-react"
 
 interface AdminNavLinksProps {
   onLinkClick?: () => void
 }
 
 const navItems = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/products", label: "Products" },
-  { href: "/admin/diagnoses", label: "Diagnoses" },
-  { href: "/admin/routine-types", label: "Routine Types" },
-  { href: "/admin/routines", label: "Routines" },
-  { href: "/admin/qr-tokens", label: "QR Tokens" },
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/products", label: "Products", icon: Boxes },
+  { href: "/admin/diagnoses", label: "Diagnoses", icon: Activity },
+  { href: "/admin/routine-types", label: "Routine Types", icon: Shapes },
+  { href: "/admin/routines", label: "Routines", icon: ClipboardList },
+  { href: "/admin/qr-tokens", label: "QR Tokens", icon: QrCode },
 ]
 
 export function AdminNavLinks({ onLinkClick }: AdminNavLinksProps) {
@@ -23,10 +31,10 @@ export function AdminNavLinks({ onLinkClick }: AdminNavLinksProps) {
   return (
     <nav className="flex flex-col gap-1">
       {navItems.map((item) => {
-        // Active check: exact for /admin, startsWith for child paths
         const isActive = item.href === "/admin"
           ? pathname === "/admin"
           : pathname.startsWith(item.href)
+        const Icon = item.icon
 
         return (
           <Link
@@ -34,12 +42,19 @@ export function AdminNavLinks({ onLinkClick }: AdminNavLinksProps) {
             href={item.href}
             onClick={onLinkClick}
             className={cn(
-              "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              "group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors",
               isActive
-                ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800/80 dark:text-zinc-50 font-semibold"
-                : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                : "text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )}
           >
+            <Icon
+              aria-hidden="true"
+              className={cn(
+                "size-4",
+                isActive ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/45 group-hover:text-sidebar-accent-foreground"
+              )}
+            />
             {item.label}
           </Link>
         )

@@ -85,10 +85,10 @@ export default function ProductImages({ productId, images }: Props) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+        <h2 className="text-sm font-semibold">
           Images
         </h2>
-        <span className="text-xs text-zinc-400">
+        <span className="text-xs text-muted-foreground">
           {localOrder.length} image{localOrder.length !== 1 ? "s" : ""}
         </span>
       </div>
@@ -96,7 +96,7 @@ export default function ProductImages({ productId, images }: Props) {
       {/* Upload form */}
       <form
         action={uploadFormAction}
-        className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/50"
+        className="form-section flex flex-wrap items-end gap-3"
       >
         <div className="space-y-1.5">
           <Label htmlFor="file">File</Label>
@@ -107,7 +107,7 @@ export default function ProductImages({ productId, images }: Props) {
             accept="image/png,image/jpeg,image/webp,image/gif"
             required
             disabled={uploading}
-            className="block w-full text-sm text-zinc-600 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-200 file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-zinc-300 dark:text-zinc-400 dark:file:bg-zinc-800 dark:hover:file:bg-zinc-700"
+            className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-full file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground hover:file:bg-muted/80"
           />
         </div>
         <div className="space-y-1.5">
@@ -131,14 +131,14 @@ export default function ProductImages({ productId, images }: Props) {
       </form>
 
       {uploadState.error && (
-        <p className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-destructive">
           {uploadState.error}
         </p>
       )}
 
       {/* Image grid */}
       {localOrder.length === 0 ? (
-        <p className="text-sm text-zinc-400 dark:text-zinc-500">
+        <p className="text-sm text-muted-foreground">
           No images yet.
         </p>
       ) : (
@@ -146,9 +146,9 @@ export default function ProductImages({ productId, images }: Props) {
           {localOrder.map((img, index) => (
             <div
               key={img.id}
-              className="group relative overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+              className="group relative overflow-hidden rounded-3xl bg-card shadow-sm ring-1 ring-foreground/5"
             >
-              <div className="relative aspect-square w-full bg-zinc-100 dark:bg-zinc-800">
+              <div className="relative aspect-square w-full bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img.imageUrl}
@@ -163,7 +163,7 @@ export default function ProductImages({ productId, images }: Props) {
                     type="button"
                     onClick={() => move(index, -1)}
                     disabled={index === 0 || isReordering}
-                    className="rounded p-1 text-zinc-500 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-800"
+                    className="rounded-full p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"
                     aria-label="Move up"
                   >
                     ↑
@@ -172,7 +172,7 @@ export default function ProductImages({ productId, images }: Props) {
                     type="button"
                     onClick={() => move(index, 1)}
                     disabled={index === localOrder.length - 1 || isReordering}
-                    className="rounded p-1 text-zinc-500 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-800"
+                    className="rounded-full p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"
                     aria-label="Move down"
                   >
                     ↓
@@ -186,7 +186,7 @@ export default function ProductImages({ productId, images }: Props) {
                   variant="ghost"
                   size="sm"
                   disabled={deleting}
-                  className="w-full text-red-600 hover:text-red-700 dark:text-red-400"
+                  className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
                   Delete
                 </Button>

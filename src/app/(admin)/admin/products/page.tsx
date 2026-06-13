@@ -20,6 +20,9 @@ import { PageHeader } from "@/components/ui/page-header"
 import { EmptyState } from "@/components/ui/empty-state"
 import { toggleProductActive, createProduct, updateProduct } from "./actions"
 import ProductForm from "./_components/product-form"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 export const metadata = { title: "Products — AOMI Kit Admin" }
 
@@ -53,7 +56,7 @@ export default async function ProductsPage({
   const formAction = editItem ? updateProduct.bind(null, editItem.id) : createProduct
 
   return (
-    <div className="space-y-6">
+    <div className="app-page">
       <PageHeader
         title="Products"
         description={
@@ -72,12 +75,12 @@ export default async function ProductsPage({
       />
 
       {/* Search */}
-      <form method="GET" className="flex gap-2 max-w-sm">
-        <input
+      <form method="GET" className="filter-bar">
+        <Input
           name="q"
           defaultValue={q ?? ""}
           placeholder="Search by name, SKU, category…"
-          className="h-8 flex-1 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+          className="min-w-0 flex-1 sm:max-w-80"
         />
         <Button type="submit" variant="outline" size="default">
           Search
@@ -117,27 +120,27 @@ export default async function ProductsPage({
           />
         )
       ) : (
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 shadow-sm">
+        <div className="data-table-shell">
           <div className="w-full overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="data-table min-w-[860px]">
               <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
-                  <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                <tr>
+                  <th className="min-w-60">
                     Name
                   </th>
-                  <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                  <th className="w-40">
                     SKU
                   </th>
-                  <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                  <th className="w-36">
                     Step Type
                   </th>
-                  <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                  <th className="min-w-40">
                     Category
                   </th>
-                  <th className="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                  <th className="w-28">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                  <th className="w-36 text-right">
                     Actions
                   </th>
                 </tr>
@@ -146,9 +149,9 @@ export default async function ProductsPage({
                 {products.map((p) => (
                   <tr
                     key={p.id}
-                    className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/40 transition-colors"
+                    className="transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50 whitespace-nowrap">
+                    <td className="font-medium whitespace-normal">
                       <Link
                         href={`/admin/products/${p.id}`}
                         className="hover:underline"
@@ -156,30 +159,20 @@ export default async function ProductsPage({
                         {p.name}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-zinc-550 dark:text-zinc-400 whitespace-nowrap">
+                    <td className="font-mono text-xs text-muted-foreground whitespace-nowrap">
                       {p.sku ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
-                      <span className="inline-flex items-center rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                        {p.stepType}
-                      </span>
+                    <td>
+                      <Badge variant="secondary">{p.stepType}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                    <td className="text-muted-foreground whitespace-normal">
                       {p.category ?? "—"}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span
-                        className={
-                          p.active
-                            ? "inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                            : "inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                        }
-                      >
-                        {p.active ? "Active" : "Inactive"}
-                      </span>
+                    <td>
+                      <StatusBadge status={p.active ? "ACTIVE" : "INACTIVE"} />
                     </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1">
+                    <td className="text-right">
+                      <div className="table-actions">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" asChild aria-label="Manage product details">
@@ -212,8 +205,8 @@ export default async function ProductsPage({
                                     size="icon"
                                     className={
                                       p.active
-                                        ? "text-red-650 hover:text-red-750 dark:text-red-400"
-                                        : "text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                                        ? "text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                        : "text-success-foreground hover:bg-success"
                                     }
                                     aria-label={p.active ? "Deactivate Product" : "Activate Product"}
                                   >
@@ -237,7 +230,7 @@ export default async function ProductsPage({
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <form action={toggleProductActive}>
                                 <input type="hidden" name="id" value={p.id} />
-                                <AlertDialogAction type="submit">
+                                <AlertDialogAction type="submit" variant={p.active ? "destructive" : "default"}>
                                   {p.active ? "Deactivate" : "Activate"}
                                 </AlertDialogAction>
                               </form>

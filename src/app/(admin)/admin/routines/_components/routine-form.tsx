@@ -17,6 +17,7 @@ import type { RoutineActionState } from "../actions"
 import { SheetFooter } from "@/components/ui/sheet"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { ArrowUp, ArrowDown, Trash2 } from "lucide-react"
+import { Spinner } from "@/components/ui/spinner"
 
 const STEP_TYPES = [
   "CLEANSER",
@@ -165,18 +166,17 @@ export default function RoutineForm({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 space-y-6">
         {state.error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300">
+          <div role="alert" aria-live="polite" className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {state.error}
           </div>
         )}
 
-        {/* Basics Section */}
-        <div className="space-y-4">
-          <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Routine Basics</h3>
+        <div className="form-section">
+          <h3 className="section-label">Routine Basics</h3>
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="name">
-                Name <span className="text-red-500">*</span>
+                Name <span className="text-destructive" aria-hidden="true">*</span>
               </Label>
               <Input
                 id="name"
@@ -188,7 +188,7 @@ export default function RoutineForm({
 
             <div className="space-y-2">
               <Label htmlFor="routineTypeId">
-                Routine type <span className="text-red-500">*</span>
+                Routine type <span className="text-destructive" aria-hidden="true">*</span>
               </Label>
               <Select
                 value={routineTypeId}
@@ -252,21 +252,20 @@ export default function RoutineForm({
                 checked={active}
                 onChange={(e) => setActive(e.target.checked)}
                 disabled={pending}
-                className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-700"
+                className="size-4 rounded border-border accent-primary"
               />
-              <Label htmlFor="active" className="cursor-pointer font-normal text-sm text-zinc-700 dark:text-zinc-300">
+              <Label htmlFor="active" className="cursor-pointer text-sm font-normal">
                 Active template
               </Label>
             </div>
           </div>
         </div>
 
-        {/* Diagnoses Section */}
-        <div className="space-y-4 pt-4 border-t border-zinc-150 dark:border-zinc-800">
-          <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Associated Diagnoses</h3>
+        <div className="form-section">
+          <h3 className="section-label">Associated Diagnoses</h3>
           <div className="space-y-2">
             {diagnoses.length === 0 ? (
-              <p className="text-sm text-zinc-400">No active diagnoses available.</p>
+              <p className="text-sm text-muted-foreground">No active diagnoses available.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {diagnoses.map((d) => {
@@ -275,10 +274,10 @@ export default function RoutineForm({
                     <label
                       key={d.id}
                       className={
-                        "flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-all " +
+                        "flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-sm transition-all focus-within:ring-3 focus-within:ring-ring/30 " +
                         (checked
-                          ? "border-zinc-900 bg-zinc-900 text-zinc-50 dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
-                          : "border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-850 dark:text-zinc-300 dark:hover:bg-zinc-900")
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background text-foreground hover:bg-muted")
                       }
                     >
                       <input
@@ -297,10 +296,9 @@ export default function RoutineForm({
           </div>
         </div>
 
-        {/* Steps Section */}
-        <div className="space-y-4 pt-4 border-t border-zinc-150 dark:border-zinc-800">
+        <div className="form-section">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Routine Steps</h3>
+            <h3 className="section-label">Routine Steps</h3>
             <Button
               type="button"
               variant="outline"
@@ -320,11 +318,12 @@ export default function RoutineForm({
               return (
                 <div
                   key={step.key}
-                  className="rounded-lg border bg-card text-card-foreground shadow-xs p-5 space-y-4"
+                  className="space-y-4 rounded-3xl bg-card p-5 shadow-sm ring-1 ring-foreground/5"
                 >
-                  <div className="flex items-center justify-between border-b pb-2 dark:border-zinc-800">
-                    <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                      Step {index + 1}
+                  <div className="flex items-center justify-between border-b border-border/70 pb-3">
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">{index + 1}</span>
+                      Routine step
                     </span>
                     <div className="flex items-center gap-1">
                       <Tooltip>
@@ -367,7 +366,7 @@ export default function RoutineForm({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="size-7 text-red-655 hover:text-red-700 dark:text-red-405"
+                            className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                             onClick={() => removeStep(step.key)}
                             disabled={steps.length === 1 || pending}
                             aria-label="Remove step"
@@ -452,11 +451,12 @@ export default function RoutineForm({
         </div>
       </div>
 
-      <SheetFooter className="shrink-0 border-t bg-background px-6 py-4 flex items-center justify-end gap-3">
+      <SheetFooter className="shrink-0 flex-row items-center justify-end gap-3 border-t border-border/70 bg-card px-6 py-4">
         <Button variant="outline" size="sm" asChild disabled={pending}>
           <Link href="/admin/routines">Cancel</Link>
         </Button>
         <Button type="submit" size="sm" disabled={pending}>
+          {pending && <Spinner />}
           {pending ? "Saving…" : submitLabel}
         </Button>
       </SheetFooter>

@@ -9,6 +9,7 @@ import { toSlug } from "@/lib/slug"
 import type { RoutineTypeActionState } from "../actions"
 import type { RoutineType } from "@/generated/prisma/client"
 import Link from "next/link"
+import { Spinner } from "@/components/ui/spinner"
 
 type Props = {
   action: (
@@ -30,7 +31,7 @@ export default function RoutineTypeForm({ action, editItem }: Props) {
           {/* Name */}
           <div className="space-y-2">
             <Label htmlFor={`rt-name-${editItem?.id ?? "new"}`}>
-              Name <span className="text-red-500">*</span>
+              Name <span className="text-destructive">*</span>
             </Label>
             <Input
               id={`rt-name-${editItem?.id ?? "new"}`}
@@ -43,7 +44,7 @@ export default function RoutineTypeForm({ action, editItem }: Props) {
               }}
             />
             {state.errors?.name?.[0] && (
-              <p className="text-xs text-red-650 dark:text-red-405 font-medium">
+              <p className="field-error">
                 {state.errors.name[0]}
               </p>
             )}
@@ -52,7 +53,7 @@ export default function RoutineTypeForm({ action, editItem }: Props) {
           {/* Slug */}
           <div className="space-y-2">
             <Label htmlFor={`rt-slug-${editItem?.id ?? "new"}`}>
-              Slug <span className="text-red-500">*</span>
+              Slug <span className="text-destructive">*</span>
             </Label>
             <Input
               id={`rt-slug-${editItem?.id ?? "new"}`}
@@ -66,7 +67,7 @@ export default function RoutineTypeForm({ action, editItem }: Props) {
               }}
             />
             {state.errors?.slug?.[0] && (
-              <p className="text-xs text-red-650 dark:text-red-405 font-medium">
+              <p className="field-error">
                 {state.errors.slug[0]}
               </p>
             )}
@@ -74,11 +75,12 @@ export default function RoutineTypeForm({ action, editItem }: Props) {
         </div>
       </div>
 
-      <SheetFooter className="shrink-0 border-t bg-background px-6 py-4 flex items-center justify-end gap-3">
+      <SheetFooter className="shrink-0 flex-row items-center justify-end gap-3 border-t border-border/70 bg-card px-6 py-4">
         <Button variant="outline" size="sm" asChild disabled={pending}>
           <Link href="/admin/routine-types">Cancel</Link>
         </Button>
         <Button type="submit" size="sm" disabled={pending}>
+          {pending && <Spinner />}
           {pending ? "Saving…" : editItem ? "Save Changes" : "Create Routine Type"}
         </Button>
       </SheetFooter>
