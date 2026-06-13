@@ -103,9 +103,10 @@ Inspect the route tree before adding or renaming routes.
 
 - Authentication is not authorization.
 - Enforce role access on the server for every protected mutation and route.
-- Reuse existing `requireAuth()` and `requireRole()` helpers.
-- ADMIN mutations must remain ADMIN-only.
-- SELLER assignment must remain SELLER-authorized.
+- Reuse existing `requireAuth()`, `requireRole()`, and `requireAnyRole()` helpers.
+- All helpers use `getCurrentUser()` (`src/lib/server/current-user.ts`) which re-queries the DB per request — deactivated users are rejected immediately.
+- ADMIN mutations must remain ADMIN-only (`requireRole("ADMIN")`).
+- SELLER assignment uses `requireAnyRole("SELLER", "ADMIN")` — both roles may use the flow.
 - Never rely only on hidden buttons or client-side route guards.
 - Do not weaken session, middleware/proxy, or credential validation.
 - Do not log passwords, hashes, secrets, tokens, or connection strings.

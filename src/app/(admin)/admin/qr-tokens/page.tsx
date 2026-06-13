@@ -101,36 +101,12 @@ export default async function QrTokensPage({
     ? Number(sp.pageSize)
     : 50
 
-  // Total count query for clamping page parameter
-  const totalCount = await prisma.qRToken.count({ where })
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-
-  // Clamp page value
-  let page = Math.max(1, Number(sp.page) || 1)
-  if (page > totalPages) {
-    page = totalPages
-  }
-
-  // Fetch list, batches, stats, and detailed token (if selected)
-  const [tokens, batches, statsGroup, detailedToken] = await Promise.all([
-    prisma.qRToken.findMany({
-      where,
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: pageSize,
-      skip: (page - 1) * pageSize,
-      select: {
-        id: true,
-        token: true,
-        status: true,
-        batchId: true,
-        createdAt: true,
-        batch: {
-          select: {
-            batchName: true,
-          },
-        },
-      },
-    }),
+  // Phase 1: run count, batch list, global status counts, and token details in
+  // parallel. Only the page-list query (tokens) must wait — it depends on the
+  // clamped page value derived from totalCount. Batches, statsGroup, and
+  // detailedToken are independent of both totalCount and each other.
+  const [totalCount, batches, statsGroup, detailedToken] = await Promise.all([
+    prisma.qRToken.count({ where }),
     prisma.qRTokenBatch.findMany({
       orderBy: { createdAt: "desc" },
       select: { id: true, batchName: true, createdAt: true },
@@ -159,6 +135,34 @@ export default async function QrTokensPage({
         })
       : null,
   ])
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+
+  // Clamp page value now that totalCount is known.
+  let page = Math.max(1, Number(sp.page) || 1)
+  if (page > totalPages) {
+    page = totalPages
+  }
+
+  // Phase 2: fetch the page of tokens (depends on clamped page from Phase 1).
+  const tokens = await prisma.qRToken.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: pageSize,
+    skip: (page - 1) * pageSize,
+    select: {
+      id: true,
+      token: true,
+      status: true,
+      batchId: true,
+      createdAt: true,
+      batch: {
+        select: {
+          batchName: true,
+        },
+      },
+    },
+  })
 
   // Process statistics mapping
   const stats = {

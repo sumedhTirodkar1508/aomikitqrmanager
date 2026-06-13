@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { checkMobileApiKey } from "@/lib/mobile-api"
 import { normalizeToken } from "@/lib/token"
 
+const NO_STORE = { "Cache-Control": "no-store" } as const
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
@@ -11,7 +13,18 @@ export async function GET(
   if (authError) return authError
 
   const { token: rawToken } = await params
-  const token = normalizeToken(decodeURIComponent(rawToken))
+
+  let decoded: string
+  try {
+    decoded = decodeURIComponent(rawToken)
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid token format" },
+      { status: 400, headers: NO_STORE }
+    )
+  }
+
+  const token = normalizeToken(decoded)
 
   const record = await prisma.qRToken.findUnique({
     where: { token },
@@ -34,36 +47,48 @@ export async function GET(
   })
 
   if (!record) {
-    return NextResponse.json({ error: "Token not found" }, { status: 404 })
+    return NextResponse.json(
+      { error: "Token not found" },
+      { status: 404, headers: NO_STORE }
+    )
   }
 
   if (record.status === "AVAILABLE") {
-    return NextResponse.json({
-      token: record.token,
-      status: "AVAILABLE",
-      message: "Token not yet assigned",
-    })
+    return NextResponse.json(
+      {
+        token: record.token,
+        status: "AVAILABLE",
+        message: "Token not yet assigned",
+      },
+      { headers: NO_STORE }
+    )
   }
 
   if (record.status === "VOIDED" || record.status === "REPLACED") {
-    return NextResponse.json({
-      token: record.token,
-      status: record.status,
-      message:
-        record.status === "VOIDED"
-          ? "This token has been voided"
-          : "This token has been replaced",
-    })
+    return NextResponse.json(
+      {
+        token: record.token,
+        status: record.status,
+        message:
+          record.status === "VOIDED"
+            ? "This token has been voided"
+            : "This token has been replaced",
+      },
+      { headers: NO_STORE }
+    )
   }
 
   // ASSIGNED or ACTIVATED — return full package payload.
   const pkg = record.package
   if (!pkg) {
-    return NextResponse.json({
-      token: record.token,
-      status: record.status,
-      message: "No package associated with this token",
-    })
+    return NextResponse.json(
+      {
+        token: record.token,
+        status: record.status,
+        message: "No package associated with this token",
+      },
+      { headers: NO_STORE }
+    )
   }
 
   // Resolve current product details + front image for each snapshot row.
@@ -91,32 +116,35 @@ export async function GET(
     return (front ?? p.images[0]).imageUrl
   }
 
-  return NextResponse.json({
-    token: record.token,
-    status: record.status,
-    assignedAt: record.assignedAt,
-    activatedAt: record.activatedAt,
-    package: {
-      id: pkg.id,
-      status: pkg.status,
+  return NextResponse.json(
+    {
+      token: record.token,
+      status: record.status,
+      assignedAt: record.assignedAt,
+      activatedAt: record.activatedAt,
+      package: {
+        id: pkg.id,
+        status: pkg.status,
+      },
+      routine: pkg.template,
+      steps: pkg.products.map((sp) => {
+        const p = productMap.get(sp.productId)
+        return {
+          stepNumber: sp.stepNumber,
+          stepType: sp.stepType,
+          instruction: sp.instruction,
+          isReplacement: sp.isReplacement,
+          product: {
+            id: sp.productId,
+            name: p?.name ?? "Unknown product",
+            sku: p?.sku ?? null,
+            category: p?.category ?? null,
+            functionDescription: p?.functionDescription ?? null,
+            imageUrl: imageUrlFor(sp.productId),
+          },
+        }
+      }),
     },
-    routine: pkg.template,
-    steps: pkg.products.map((sp) => {
-      const p = productMap.get(sp.productId)
-      return {
-        stepNumber: sp.stepNumber,
-        stepType: sp.stepType,
-        instruction: sp.instruction,
-        isReplacement: sp.isReplacement,
-        product: {
-          id: sp.productId,
-          name: p?.name ?? "Unknown product",
-          sku: p?.sku ?? null,
-          category: p?.category ?? null,
-          functionDescription: p?.functionDescription ?? null,
-          imageUrl: imageUrlFor(sp.productId),
-        },
-      }
-    }),
-  })
+    { headers: NO_STORE }
+  )
 }

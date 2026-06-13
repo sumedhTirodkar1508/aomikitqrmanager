@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth-helpers"
+import { requireAnyRole } from "@/lib/auth-helpers"
 import LogoutButton from "@/components/auth/logout-button"
 import Link from "next/link"
 import { Home, QrCode, ScanLine } from "lucide-react"
@@ -8,7 +8,7 @@ export default async function SellerLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await requireAuth()
+  const session = await requireAnyRole("SELLER", "ADMIN")
 
   return (
     <div className="min-h-screen">

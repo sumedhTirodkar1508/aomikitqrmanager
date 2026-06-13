@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { requireAuth } from "@/lib/auth-helpers"
+import { requireAnyRole } from "@/lib/auth-helpers"
 import { writeAuditLog } from "@/lib/audit"
 import { normalizeToken, isValidTokenFormat } from "@/lib/token"
 import type { StepType } from "@/generated/prisma/client"
@@ -15,7 +15,7 @@ export type ValidateTokenResult =
   | { ok: false; error: string }
 
 export async function validateToken(raw: string): Promise<ValidateTokenResult> {
-  await requireAuth()
+  await requireAnyRole("SELLER", "ADMIN")
 
   const token = normalizeToken(raw ?? "")
   if (!token) return { ok: false, error: "Enter a token" }
@@ -53,7 +53,7 @@ export type RoutineOption = {
 export async function getRoutinesForDiagnosis(
   diagnosisId: string
 ): Promise<RoutineOption[]> {
-  await requireAuth()
+  await requireAnyRole("SELLER", "ADMIN")
   if (!diagnosisId) return []
 
   const routines = await prisma.routineTemplate.findMany({
@@ -104,11 +104,10 @@ export type RoutinePreview = {
   steps: RoutineStepPreview[]
 }
 
-export async function getRoutinePreview(
-  routineId: string
-): Promise<RoutinePreview | null> {
-  await requireAuth()
-
+// Internal: builds the authoritative preview data without an auth check.
+// Called from both getRoutinePreview (which adds auth) and confirmAssignment
+// (which has already verified auth) so the option-building logic stays in one place.
+async function loadRoutinePreviewData(routineId: string): Promise<RoutinePreview | null> {
   const routine = await prisma.routineTemplate.findUnique({
     where: { id: routineId },
     include: {
@@ -136,7 +135,7 @@ export async function getRoutinePreview(
       })
     : []
 
-  // Active products grouped by step type, for "same StepType" swaps.
+  // Active products grouped by step type for same-type swaps.
   const stepTypes = Array.from(new Set(routine.steps.map((s) => s.stepType)))
   const sameTypeProducts = await prisma.product.findMany({
     where: { active: true, stepType: { in: stepTypes as StepType[] } },
@@ -157,7 +156,7 @@ export async function getRoutinePreview(
       })
     }
 
-    // Same step-type products.
+    // Same step-type products (active, any of the same type).
     for (const p of sameTypeProducts) {
       if (p.stepType !== step.stepType) continue
       if (options.has(p.id)) continue
@@ -203,11 +202,19 @@ export async function getRoutinePreview(
   }
 }
 
+export async function getRoutinePreview(
+  routineId: string
+): Promise<RoutinePreview | null> {
+  await requireAnyRole("SELLER", "ADMIN")
+  return loadRoutinePreviewData(routineId)
+}
+
 // ─── Step 5: confirm assignment (transactional) ──────────────────────────────
 
 const ConfirmSchema = z.object({
   tokenId: z.string().min(1),
   routineId: z.string().min(1),
+  diagnosisId: z.string().min(1),
   selections: z.array(
     z.object({
       stepId: z.string().min(1),
@@ -221,68 +228,96 @@ export type ConfirmResult =
   | { ok: false; error: string }
 
 export async function confirmAssignment(input: unknown): Promise<ConfirmResult> {
-  const session = await requireAuth()
+  const { user } = await requireAnyRole("SELLER", "ADMIN")
 
   const parsed = ConfirmSchema.safeParse(input)
   if (!parsed.success) {
     return { ok: false, error: "Invalid assignment data" }
   }
-  const { tokenId, routineId, selections } = parsed.data
+  const { tokenId, routineId, diagnosisId, selections } = parsed.data
 
-  // Load routine + steps to build the immutable snapshot and validate choices.
-  const routine = await prisma.routineTemplate.findUnique({
-    where: { id: routineId },
-    include: { steps: { orderBy: { stepNumber: "asc" } } },
-  })
-  if (!routine || !routine.active) {
+  // Re-compute authoritative options from the database — do not trust client-supplied
+  // product/step combinations.
+  const preview = await loadRoutinePreviewData(routineId)
+  if (!preview) {
     return { ok: false, error: "Routine is no longer available" }
   }
 
+  // Verify the diagnosis is active and linked to this routine at commit time.
+  // A single query handles unknown diagnosis, unlinked diagnosis, and inactive diagnosis.
+  const diagnosisLink = await prisma.routineTemplateDiagnosis.findUnique({
+    where: {
+      routineTemplateId_diagnosisId: {
+        routineTemplateId: routineId,
+        diagnosisId,
+      },
+    },
+    select: { diagnosis: { select: { active: true } } },
+  })
+  if (!diagnosisLink) {
+    return { ok: false, error: "Diagnosis is not associated with this routine" }
+  }
+  if (!diagnosisLink.diagnosis.active) {
+    return { ok: false, error: "Diagnosis is no longer active" }
+  }
+
+  // 1. Reject duplicate step IDs in the submission.
+  const submittedStepIds = selections.map((s) => s.stepId)
+  if (new Set(submittedStepIds).size !== submittedStepIds.length) {
+    return { ok: false, error: "Duplicate step in selection" }
+  }
+
+  // 2. Verify every required step is present and no unknown steps were submitted.
+  const requiredStepIds = new Set(preview.steps.map((s) => s.stepId))
+  const submittedStepIdSet = new Set(submittedStepIds)
+  for (const id of requiredStepIds) {
+    if (!submittedStepIdSet.has(id)) {
+      return { ok: false, error: "Missing step in selection" }
+    }
+  }
+  for (const id of submittedStepIdSet) {
+    if (!requiredStepIds.has(id)) {
+      return { ok: false, error: "Unknown step ID in selection" }
+    }
+  }
+
+  // 3. For each step, validate the chosen product is in the server-computed allowed set.
+  //    The server — not the client — determines stepNumber, stepType, isReplacement,
+  //    and originalProductId from authoritative data.
   const selectionByStep = new Map(selections.map((s) => [s.stepId, s.productId]))
 
-  // Resolve chosen product per step (fall back to the step default).
-  const chosen: {
+  type ChosenItem = {
     stepId: string
     stepNumber: number
     stepType: StepType
     productId: string
     originalProductId: string | null
+    isReplacement: boolean
     instruction: string | null
-  }[] = []
+  }
 
-  for (const step of routine.steps) {
-    const productId = selectionByStep.get(step.id) ?? step.defaultProductId
-    if (!productId) {
+  const chosenItems: ChosenItem[] = []
+  for (const step of preview.steps) {
+    const productId = selectionByStep.get(step.stepId)!
+    const option = step.options.find((o) => o.id === productId)
+    if (!option) {
       return {
         ok: false,
-        error: `Step ${step.stepNumber} (${step.stepType}) has no product selected`,
+        error: `Product not allowed for step ${step.stepNumber} (${step.stepType})`,
       }
     }
-    chosen.push({
-      stepId: step.id,
+    chosenItems.push({
+      stepId: step.stepId,
       stepNumber: step.stepNumber,
-      stepType: step.stepType,
+      stepType: step.stepType as StepType,
       productId,
       originalProductId: step.defaultProductId,
+      isReplacement: option.isReplacement,
       instruction: step.instruction,
     })
   }
 
-  // Validate that all chosen products exist and are active.
-  const chosenIds = Array.from(new Set(chosen.map((c) => c.productId)))
-  const products = await prisma.product.findMany({
-    where: { id: { in: chosenIds } },
-    select: { id: true, active: true },
-  })
-  const productMap = new Map(products.map((p) => [p.id, p]))
-  for (const id of chosenIds) {
-    const p = productMap.get(id)
-    if (!p) return { ok: false, error: "A selected product no longer exists" }
-    if (!p.active) {
-      return { ok: false, error: "A selected product is inactive" }
-    }
-  }
-
+  // 4. Transactional write: race-safe token claim + package + audit in one unit.
   try {
     const pkg = await prisma.$transaction(async (tx) => {
       // Race-safe status transition: only claim the token if still AVAILABLE.
@@ -299,30 +334,33 @@ export async function confirmAssignment(input: unknown): Promise<ConfirmResult> 
           qrTokenId: tokenId,
           routineTemplateId: routineId,
           status: "ASSIGNED",
-          createdByUserId: session.user.id,
+          createdByUserId: user.id,
         },
       })
 
       await tx.packageProduct.createMany({
-        data: chosen.map((c) => ({
+        data: chosenItems.map((c) => ({
           packageId: created.id,
           routineTemplateStepId: c.stepId,
           stepNumber: c.stepNumber,
           stepType: c.stepType,
           productId: c.productId,
           originalProductId: c.originalProductId,
-          isReplacement:
-            !!c.originalProductId && c.originalProductId !== c.productId,
+          isReplacement: c.isReplacement,
           instruction: c.instruction,
         })),
       })
 
-      return created
-    })
+      await writeAuditLog(
+        user.id,
+        "ASSIGN",
+        "Package",
+        created.id,
+        { qrTokenId: tokenId, routineTemplateId: routineId },
+        tx
+      )
 
-    await writeAuditLog(session.user.id, "ASSIGN", "Package", pkg.id, {
-      qrTokenId: tokenId,
-      routineTemplateId: routineId,
+      return created
     })
 
     revalidatePath("/seller")

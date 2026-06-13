@@ -66,3 +66,6 @@ In CI/CD you may prefer `prisma migrate deploy` instead of `migrate dev`.
   requires it).
 - Rotate `MOBILE_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` before going to
   production; the defaults in `.env` are development placeholders.
+- `next-auth` is pinned to `5.0.0-beta.31` (exact, no caret). Upgrading to
+  another beta or to stable requires a separate compatibility review — do not
+  bump it incidentally during dependency updates.

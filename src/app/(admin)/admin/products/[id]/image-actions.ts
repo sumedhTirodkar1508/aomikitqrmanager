@@ -10,11 +10,11 @@ import {
   productImagePublicUrl,
   PRODUCT_IMAGES_BUCKET,
 } from "@/lib/supabase-server"
+import { detectMime, isAllowedImageMime } from "@/lib/server/image-signatures"
 import type { ImageType } from "@/generated/prisma/client"
 
 const IMAGE_TYPES = ["FRONT", "SECONDARY", "REFERENCE"] as const
 const MAX_BYTES = 5 * 1024 * 1024 // 5MB
-const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif"]
 
 export type ImageActionState = { error?: string; ok?: boolean }
 
@@ -23,7 +23,7 @@ export async function uploadProductImage(
   _prevState: ImageActionState,
   formData: FormData
 ): Promise<ImageActionState> {
-  const session = await requireRole("ADMIN")
+  const { user } = await requireRole("ADMIN")
 
   const file = formData.get("file")
   const imageType = formData.get("imageType")
@@ -37,8 +37,14 @@ export async function uploadProductImage(
   if (file.size > MAX_BYTES) {
     return { error: "File too large (max 5MB)" }
   }
-  if (!ALLOWED_MIME.includes(file.type)) {
-    return { error: "Unsupported file type. Use JPEG, PNG, WebP, or GIF." }
+
+  const arrayBuffer = await file.arrayBuffer()
+  const bytes = new Uint8Array(arrayBuffer)
+
+  // Validate by magic bytes, not client-supplied Content-Type.
+  const detectedMime = detectMime(bytes)
+  if (!detectedMime || !isAllowedImageMime(detectedMime)) {
+    return { error: "Unsupported file type. Upload a JPEG, PNG, WebP, or GIF." }
   }
 
   const product = await prisma.product.findUnique({
@@ -47,15 +53,21 @@ export async function uploadProductImage(
   })
   if (!product) return { error: "Product not found" }
 
-  const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin"
+  // Extension from detected MIME (authoritative), not client-supplied file name.
+  const mimeToExt: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/gif": "gif",
+    "image/webp": "webp",
+  }
+  const ext = mimeToExt[detectedMime] ?? "bin"
   const objectPath = `${productId}/${crypto.randomUUID()}.${ext}`
 
   const supabase = getSupabaseAdmin()
-  const arrayBuffer = await file.arrayBuffer()
   const { error: uploadError } = await supabase.storage
     .from(PRODUCT_IMAGES_BUCKET)
     .upload(objectPath, arrayBuffer, {
-      contentType: file.type,
+      contentType: detectedMime,
       upsert: false,
     })
 
@@ -71,16 +83,23 @@ export async function uploadProductImage(
     select: { sortOrder: true },
   })
 
-  const image = await prisma.productImage.create({
-    data: {
-      productId,
-      imageUrl,
-      imageType: typeParse.data as ImageType,
-      sortOrder: (last?.sortOrder ?? -1) + 1,
-    },
-  })
+  let image: { id: string }
+  try {
+    image = await prisma.productImage.create({
+      data: {
+        productId,
+        imageUrl,
+        imageType: typeParse.data as ImageType,
+        sortOrder: (last?.sortOrder ?? -1) + 1,
+      },
+    })
+  } catch {
+    // DB write failed — remove the orphaned storage object.
+    await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([objectPath])
+    return { error: "Failed to save image record. The uploaded file has been removed." }
+  }
 
-  await writeAuditLog(session.user.id, "UPLOAD_IMAGE", "ProductImage", image.id, {
+  await writeAuditLog(user.id, "UPLOAD_IMAGE", "ProductImage", image.id, {
     productId,
     imageType: typeParse.data,
     objectPath,
@@ -95,7 +114,7 @@ export async function deleteProductImage(
   _prevState: ImageActionState,
   formData: FormData
 ): Promise<ImageActionState> {
-  const session = await requireRole("ADMIN")
+  const { user } = await requireRole("ADMIN")
   const imageId = formData.get("imageId") as string
   if (!imageId) return { error: "Missing image id" }
 
@@ -107,7 +126,16 @@ export async function deleteProductImage(
     return { error: "Image not found" }
   }
 
-  // Best-effort remove from storage. Object path is everything after the bucket.
+  // Delete DB record first — the DB is authoritative. Storage cleanup is
+  // best-effort: an orphaned storage object is non-critical, but a dangling
+  // DB record pointing to a deleted file causes broken image URLs.
+  await prisma.productImage.delete({ where: { id: imageId } })
+
+  await writeAuditLog(user.id, "DELETE_IMAGE", "ProductImage", imageId, {
+    productId,
+  })
+
+  // Best-effort remove from storage.
   const marker = `/${PRODUCT_IMAGES_BUCKET}/`
   const idx = image.imageUrl.indexOf(marker)
   if (idx !== -1) {
@@ -117,12 +145,6 @@ export async function deleteProductImage(
       .remove([objectPath])
   }
 
-  await prisma.productImage.delete({ where: { id: imageId } })
-
-  await writeAuditLog(session.user.id, "DELETE_IMAGE", "ProductImage", imageId, {
-    productId,
-  })
-
   revalidatePath(`/admin/products/${productId}`)
   return { ok: true }
 }
@@ -131,7 +153,7 @@ export async function reorderProductImages(
   productId: string,
   orderedIds: string[]
 ): Promise<ImageActionState> {
-  const session = await requireRole("ADMIN")
+  const { user } = await requireRole("ADMIN")
 
   const images = await prisma.productImage.findMany({
     where: { productId },
@@ -149,7 +171,7 @@ export async function reorderProductImages(
     )
   )
 
-  await writeAuditLog(session.user.id, "REORDER_IMAGES", "Product", productId, {
+  await writeAuditLog(user.id, "REORDER_IMAGES", "Product", productId, {
     order: filtered,
   })
 

@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth-helpers"
+import { requireAnyRole } from "@/lib/auth-helpers"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import AssignFlow from "./_components/assign-flow"
@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/ui/page-header"
 export const metadata = { title: "Assign QR Kit — AOMI Kit" }
 
 export default async function AssignPage() {
-  await requireAuth()
+  await requireAnyRole("SELLER", "ADMIN")
 
   const diagnoses = await prisma.diagnosis.findMany({
     where: { active: true },
