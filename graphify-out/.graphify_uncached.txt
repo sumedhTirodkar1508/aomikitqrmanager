@@ -1,0 +1,11 @@
+README.md
+AGENTS.md
+CLAUDE.md
+docs/API.md
+docs/SETUP.md
+docs/DEPLOYMENT.md
+public/file.svg
+public/vercel.svg
+public/next.svg
+public/globe.svg
+public/window.svg
