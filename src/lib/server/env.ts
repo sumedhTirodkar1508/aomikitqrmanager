@@ -1,6 +1,8 @@
-// server-only: reads process.env secrets — never import from Client Components.
+import "server-only";
 
-let validated = false
+// Reads process.env secrets — never import from Client Components.
+
+let validated = false;
 
 /**
  * Validate required environment variables at first call rather than module
@@ -10,8 +12,8 @@ let validated = false
  * needs env vars validated.
  */
 export function validateEnv(): void {
-  if (validated) return
-  validated = true
+  if (validated) return;
+  validated = true;
 
   const required: string[] = [
     "DATABASE_URL",
@@ -20,21 +22,21 @@ export function validateEnv(): void {
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
     "MOBILE_API_KEY",
-  ]
+  ];
 
-  const missing = required.filter((key) => !process.env[key])
+  const missing = required.filter((key) => !process.env[key]);
   if (missing.length > 0) {
     throw new Error(
-      `Missing required environment variables: ${missing.join(", ")}`
-    )
+      `Missing required environment variables: ${missing.join(", ")}`,
+    );
   }
 }
 
 /** Retrieve a required env var, throwing clearly if absent. */
 export function requireEnv(key: string): string {
-  const value = process.env[key]
+  const value = process.env[key];
   if (!value) {
-    throw new Error(`Environment variable ${key} is not set`)
+    throw new Error(`Environment variable ${key} is not set`);
   }
-  return value
+  return value;
 }

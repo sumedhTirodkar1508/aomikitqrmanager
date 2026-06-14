@@ -23,6 +23,15 @@
  *   Q – API-002: activate schema rejects empty token
  *   R – API-002: activate schema trims whitespace from token
  *   S – API-002: activate schema rejects externalUserId > 200 chars
+ *   T – HDR-001: missing x-api-key response has Cache-Control: no-store
+ *   U – HDR-001: wrong x-api-key response has Cache-Control: no-store
+ *   V – HDR-001: unconfigured API key (503) has Cache-Control: no-store
+ *   W – HDR-001: length-mismatch key rejection has Cache-Control: no-store
+ *   X – HDR-001: successful auth returns null (no premature rejection)
+ *   Y – HDR-002: GET route malformed-URL 400 has Cache-Control: no-store
+ *   Z – HDR-002: GET route missing-key 401 has Cache-Control: no-store
+ *  AA – HDR-002: POST route validation-error 400 has Cache-Control: no-store
+ *  AB – HDR-002: POST route missing-key 401 has Cache-Control: no-store
  *
  * Run:  npm run test:phase2
  */
@@ -32,8 +41,19 @@ import crypto from "crypto"
 import { z } from "zod"
 import { readFileSync } from "fs"
 import { join } from "path"
+import { NextRequest } from "next/server"
 import { detectMime, isAllowedImageMime } from "../src/lib/server/image-signatures"
-import { requireEnv } from "../src/lib/server/env"
+import { checkMobileApiKey } from "../src/lib/mobile-api"
+import { GET as qrGet } from "../src/app/api/qr/[token]/route"
+import { POST as activatePost } from "../src/app/api/qr/activate/route"
+
+// Inline replica of requireEnv — avoids importing env.ts which has
+// `import "server-only"` (incompatible with plain tsx execution).
+function requireEnv(key: string): string {
+  const value = process.env[key]
+  if (!value) throw new Error(`Environment variable ${key} is not set`)
+  return value
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -204,10 +224,163 @@ assert(
   "S – externalUserId > 200 chars rejected"
 )
 
+// ─── HDR-001/002: Cache-Control: no-store on every mobile API response ────────
+// Tests T–AB call checkMobileApiKey and the route handlers directly (where no
+// database is needed) so they inspect actual response behavior, not constants.
+
+console.log("\n── HDR-001: checkMobileApiKey responses include Cache-Control: no-store ──")
+
+const TEST_API_KEY = "test-mobile-api-key-for-phase2"
+
+// Helper to build a mock NextRequest with optional x-api-key.
+function mockReq(url: string, headers: Record<string, string> = {}): NextRequest {
+  return new NextRequest(url, { headers })
+}
+
+{
+  // T – missing x-api-key → 401, must include no-store
+  const savedKey = process.env.MOBILE_API_KEY
+  process.env.MOBILE_API_KEY = TEST_API_KEY
+  const res = checkMobileApiKey(mockReq("http://localhost/api/qr/TEST"))
+  assert(res !== null, "T – missing x-api-key produces a response (not null)")
+  assert(res?.status === 401, "T – missing x-api-key is 401")
+  assert(
+    res?.headers.get("Cache-Control") === "no-store",
+    "T – missing x-api-key response has Cache-Control: no-store"
+  )
+  process.env.MOBILE_API_KEY = savedKey
+}
+
+{
+  // U – wrong x-api-key → 401, must include no-store
+  const savedKey = process.env.MOBILE_API_KEY
+  process.env.MOBILE_API_KEY = TEST_API_KEY
+  const res = checkMobileApiKey(
+    mockReq("http://localhost/api/qr/TEST", { "x-api-key": "wrong-key-entirely" })
+  )
+  assert(res !== null, "U – wrong x-api-key produces a response (not null)")
+  assert(res?.status === 401, "U – wrong x-api-key is 401")
+  assert(
+    res?.headers.get("Cache-Control") === "no-store",
+    "U – incorrect x-api-key response has Cache-Control: no-store"
+  )
+  process.env.MOBILE_API_KEY = savedKey
+}
+
+{
+  // V – missing MOBILE_API_KEY env → 503, must include no-store
+  const savedKey = process.env.MOBILE_API_KEY
+  delete process.env.MOBILE_API_KEY
+  const res = checkMobileApiKey(
+    mockReq("http://localhost/api/qr/TEST", { "x-api-key": "any-key" })
+  )
+  assert(res !== null, "V – unconfigured API key produces a response (not null)")
+  assert(res?.status === 503, "V – unconfigured API key is 503")
+  assert(
+    res?.headers.get("Cache-Control") === "no-store",
+    "V – unconfigured-API-key 503 response has Cache-Control: no-store"
+  )
+  process.env.MOBILE_API_KEY = savedKey
+}
+
+{
+  // W – length-mismatch key → 401, must include no-store
+  const savedKey = process.env.MOBILE_API_KEY
+  process.env.MOBILE_API_KEY = TEST_API_KEY
+  const res = checkMobileApiKey(
+    mockReq("http://localhost/api/qr/TEST", { "x-api-key": "short" })
+  )
+  assert(res !== null, "W – length-mismatch key produces a response (not null)")
+  assert(res?.status === 401, "W – length-mismatch key is 401")
+  assert(
+    res?.headers.get("Cache-Control") === "no-store",
+    "W – length-mismatch key response has Cache-Control: no-store"
+  )
+  process.env.MOBILE_API_KEY = savedKey
+}
+
+{
+  // X – valid key → null (authorized, no early rejection)
+  const savedKey = process.env.MOBILE_API_KEY
+  process.env.MOBILE_API_KEY = TEST_API_KEY
+  const res = checkMobileApiKey(
+    mockReq("http://localhost/api/qr/TEST", { "x-api-key": TEST_API_KEY })
+  )
+  assert(res === null, "X – correct x-api-key returns null (authorized)")
+  process.env.MOBILE_API_KEY = savedKey
+}
+
+// HDR-002 tests call actual route handlers. Route handlers are async so we
+// wrap them in a function and defer process.exit until they complete.
+async function runRouteHeaderTests() {
+  console.log("\n── HDR-002: route handler pre-DB responses include Cache-Control: no-store ──")
+
+  // Y – GET with valid key but malformed percent-encoded token → 400 before DB
+  {
+    const savedKey = process.env.MOBILE_API_KEY
+    process.env.MOBILE_API_KEY = TEST_API_KEY
+    const reqY = mockReq("http://localhost/api/qr/%E0%A4%A", {
+      "x-api-key": TEST_API_KEY,
+    })
+    const resY = await qrGet(reqY, { params: Promise.resolve({ token: "%E0%A4%A" }) })
+    assert(resY.status === 400, "Y – GET malformed URL encoding is 400")
+    assert(
+      resY.headers.get("Cache-Control") === "no-store",
+      "Y – GET malformed-URL 400 has Cache-Control: no-store"
+    )
+
+    // Z – GET with missing key → 401 (checkMobileApiKey path in route)
+    const reqZ = mockReq("http://localhost/api/qr/TOKEN")
+    const resZ = await qrGet(reqZ, { params: Promise.resolve({ token: "TOKEN" }) })
+    assert(resZ.status === 401, "Z – GET missing-key 401 has Cache-Control: no-store")
+    assert(
+      resZ.headers.get("Cache-Control") === "no-store",
+      "Z – GET missing-key 401 has Cache-Control: no-store"
+    )
+    process.env.MOBILE_API_KEY = savedKey
+  }
+
+  // AA – POST with valid key but empty token body → 400 (Zod) before DB
+  {
+    const savedKey = process.env.MOBILE_API_KEY
+    process.env.MOBILE_API_KEY = TEST_API_KEY
+    const reqAA = new NextRequest("http://localhost/api/qr/activate", {
+      method: "POST",
+      headers: { "x-api-key": TEST_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ token: "" }),
+    })
+    const resAA = await activatePost(reqAA)
+    assert(resAA.status === 400, "AA – POST empty-token is 400")
+    assert(
+      resAA.headers.get("Cache-Control") === "no-store",
+      "AA – POST validation-error 400 has Cache-Control: no-store"
+    )
+
+    // AB – POST with missing key → 401 (checkMobileApiKey path in route)
+    const reqAB = new NextRequest("http://localhost/api/qr/activate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: "TOKEN-123" }),
+    })
+    const resAB = await activatePost(reqAB)
+    assert(resAB.status === 401, "AB – POST missing-key is 401")
+    assert(
+      resAB.headers.get("Cache-Control") === "no-store",
+      "AB – POST missing-key 401 has Cache-Control: no-store"
+    )
+    process.env.MOBILE_API_KEY = savedKey
+  }
+}
+
 // ─── Summary ────────────────────────────────────────────────────────────────
 
-console.log("\n── Phase 2 test suite complete ──")
-if (exitCode !== 0) {
-  console.error("\nOne or more assertions failed.")
-}
-process.exit(exitCode)
+runRouteHeaderTests()
+  .then(() => {
+    console.log("\n── Phase 2 test suite complete ──")
+    if (exitCode !== 0) console.error("\nOne or more assertions failed.")
+    process.exit(exitCode)
+  })
+  .catch((err) => {
+    console.error("Unhandled error in route header tests:", err)
+    process.exit(1)
+  })
