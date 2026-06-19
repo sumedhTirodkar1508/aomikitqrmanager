@@ -80,10 +80,9 @@ Sheets: `Instructions`, `Diagnoses`.
 
 Sheets: `Instructions`, `Routine Types`.
 
-`Routine Types` columns: `slug`, `name`, `description`, `isActive`.
+`Routine Types` columns: `slug`, `name`, `isActive`.
 
-- Same slug rules as diagnoses. (`description` is validated for length but the
-  `RoutineType` model has no description column, so it is not persisted.)
+- Same slug rules as diagnoses. (Legacy templates containing a `description` column are safely parsed but the unused column is ignored.)
 
 ## Template D — Routines (`AOMI_ROUTINES_TEMPLATE_V1.xlsx`)
 

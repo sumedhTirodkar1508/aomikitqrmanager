@@ -437,6 +437,15 @@ Test: `npm run test:qr-import` (`scripts/test-qr-token-import-integrity.ts`)
 
 ---
 
+## Supabase keep-alive flow
+
+- `POST /api/internal/keepalive` (in `src/app/api/internal/keepalive/route.ts`) performs a read-only `SELECT 1` ping to prevent project pause.
+- Authenticated via timing-safe `x-keepalive-key` comparison (`src/lib/keepalive.ts` / `src/lib/mobile-api.ts`).
+- Triggered by a GitHub Actions cron job (`.github/workflows/supabase-keepalive.yml`) with retry behavior.
+- Returns strict `Cache-Control: no-store` headers.
+
+---
+
 ## Mobile API flow
 
 All routes require `x-api-key: <MOBILE_API_KEY>` header. Key comparison uses `crypto.timingSafeEqual` (constant-time). See `docs/API.md` for full spec.
@@ -562,6 +571,7 @@ routine types, and routines. See `docs/EXCEL_IMPORTS.md` for the full spec.
 - UI: `src/components/admin/excel-import-dialog.tsx`.
 - Two-phase: dry-run preview (no writes) → confirmed commit (one transaction,
   one audit entry). Limits: 10 MB, 5000 rows. Existing identifiers are skipped.
+- Routine Type templates intentionally do not expose or import the unused `description` field.
 
 ## Seller scanning & searchable selectors
 
@@ -570,8 +580,7 @@ routine types, and routines. See `docs/EXCEL_IMPORTS.md` for the full spec.
 - `src/lib/qr-payload.ts` — pure parser accepting a raw token or an AOMI
   `/api/qr/<token>` URL; rejects arbitrary external URLs.
 - `src/app/(seller)/seller/assign/_components/qr-scanner-dialog.tsx` — camera
-  scanning via the native `BarcodeDetector` API (no new dependency); stops all
-  media tracks on success/close/unmount.
+  scanning natively via `BarcodeDetector` API with a lazy-loaded `jsQR` fallback for Safari/iOS; stops all media tracks on success/close/unmount.
 - Manual, USB keyboard-wedge, and camera input all funnel through
   `parseQrPayload` → `validateToken`.
 
@@ -688,7 +697,7 @@ generated output is not already present.
 | `docs/SETUP.md` | Local dev setup and env vars |
 | `docs/DEPLOYMENT.md` | Vercel + Supabase deployment guide |
 | `docs/QR_TOKEN_LIFECYCLE.md` | QR state machine reference with transition table |
-| `graphify-out/GRAPH_REPORT.md` | Auto-generated graph report (2026-06-14: 335 nodes, 274 edges, 113 communities) |
+| `graphify-out/GRAPH_REPORT.md` | Auto-generated graph report (current: 453 nodes, 417 edges, 142 communities) |
 
 ---
 
