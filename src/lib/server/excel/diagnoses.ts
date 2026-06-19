@@ -26,7 +26,7 @@ export async function previewDiagnosesImport(
   buffer: Buffer
 ): Promise<ImportPreview> {
   const workbook = await loadWorkbook(buffer)
-  const parsed = parseSlugSheet(workbook, DIAGNOSES_SHEET)
+  const parsed = parseSlugSheet(workbook, DIAGNOSES_SHEET, { parseDescription: true })
   const existing = await existingSlugSet(parsed.candidates.map((c) => c.slug))
   return buildSlugPreview(ENTITY, parsed, existing)
 }
@@ -36,7 +36,7 @@ export async function commitDiagnosesImport(
   userId: string | null
 ): Promise<ImportCommitResult> {
   const workbook = await loadWorkbook(buffer)
-  const parsed = parseSlugSheet(workbook, DIAGNOSES_SHEET)
+  const parsed = parseSlugSheet(workbook, DIAGNOSES_SHEET, { parseDescription: true })
   const existing = await existingSlugSet(parsed.candidates.map((c) => c.slug))
 
   const toCreate = parsed.candidates.filter((c) => !existing.has(c.slug))

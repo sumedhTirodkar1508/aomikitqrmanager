@@ -43,6 +43,8 @@ export function QrScannerDialog({
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastTokenRef = useRef<string | null>(null)
   const detectedRef = useRef(false)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const lastScanTimeRef = useRef<number>(0)
 
   // Keep the latest callback in a ref so `start` stays referentially stable and
   // the lifecycle effect does not restart the camera on every parent render.
@@ -93,26 +95,21 @@ export function QrScannerDialog({
     const Detector = (
       window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }
     ).BarcodeDetector
-    if (!Detector) {
-      setStatus("error")
-      setMessage(
-        "QR scanning isn't supported in this browser. Use a USB scanner or manual entry."
-      )
-      return
+
+    let detector: BarcodeDetectorLike | null = null
+    if (Detector) {
+      try {
+        const formats = await Detector.getSupportedFormats()
+        if (formats.includes("qr_code")) {
+          detector = new Detector({ formats: ["qr_code"] })
+        }
+      } catch {
+        /* fallback to jsqr */
+      }
     }
 
-    let formats: string[] = []
-    try {
-      formats = await Detector.getSupportedFormats()
-    } catch {
-      /* fall through to the unsupported message below */
-    }
-    if (!formats.includes("qr_code")) {
-      setStatus("error")
-      setMessage(
-        "QR scanning isn't supported in this browser. Use a USB scanner or manual entry."
-      )
-      return
+    if (!canvasRef.current && typeof document !== "undefined") {
+      canvasRef.current = document.createElement("canvas")
     }
 
     let stream: MediaStream
@@ -147,7 +144,6 @@ export function QrScannerDialog({
     }
 
     setStatus("scanning")
-    const detector = new Detector({ formats: ["qr_code"] })
 
     timeoutRef.current = setTimeout(() => {
       if (!detectedRef.current) {
@@ -157,24 +153,61 @@ export function QrScannerDialog({
       }
     }, SCAN_TIMEOUT_MS)
 
-    const tick = async () => {
+    const tick = async (timestamp: number) => {
       if (detectedRef.current || !streamRef.current || !videoRef.current) return
-      try {
-        const codes = await detector.detect(videoRef.current)
-        for (const code of codes) {
-          const result = parseQrPayload(code.rawValue)
-          if (!result.ok) continue
-          // Ignore repeat decodes of the same token.
-          if (result.token === lastTokenRef.current) continue
-          lastTokenRef.current = result.token
-          detectedRef.current = true
-          stopCamera()
-          setOpen(false)
-          onTokenRef.current(result.token)
-          return
+      const video = videoRef.current
+
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        try {
+          if (detector) {
+            const codes = await detector.detect(video)
+            for (const code of codes) {
+              const result = parseQrPayload(code.rawValue)
+              if (!result.ok) continue
+              if (result.token === lastTokenRef.current) continue
+              lastTokenRef.current = result.token
+              detectedRef.current = true
+              stopCamera()
+              setOpen(false)
+              onTokenRef.current(result.token)
+              return
+            }
+          } else {
+            if (timestamp - lastScanTimeRef.current >= 250) {
+              lastScanTimeRef.current = timestamp
+              const canvas = canvasRef.current
+              if (canvas) {
+                if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+                  canvas.width = video.videoWidth
+                  canvas.height = video.videoHeight
+                }
+                const ctx = canvas.getContext("2d", { willReadFrequently: true })
+                if (ctx) {
+                  ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+                  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+                  const jsQRModule = await import("jsqr")
+                  const jsQR = jsQRModule.default || jsQRModule
+                  const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                  })
+                  if (code) {
+                    const result = parseQrPayload(code.data)
+                    if (result.ok && result.token !== lastTokenRef.current) {
+                      lastTokenRef.current = result.token
+                      detectedRef.current = true
+                      stopCamera()
+                      setOpen(false)
+                      onTokenRef.current(result.token)
+                      return
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch {
+          /* transient detect errors are ignored; keep scanning */
         }
-      } catch {
-        /* transient detect errors are ignored; keep scanning */
       }
       rafRef.current = requestAnimationFrame(tick)
     }

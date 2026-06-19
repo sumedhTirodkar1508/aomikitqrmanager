@@ -15,13 +15,14 @@ import {
   type ImportPreview,
 } from "./core"
 
-export const SLUG_ENTITY_COLUMNS = ["slug", "name", "description", "isActive"] as const
+export const SLUG_ENTITY_COLUMNS = ["slug", "name", "isActive"] as const
+export const SLUG_ENTITY_COLUMNS_WITH_DESC = ["slug", "name", "description", "isActive"] as const
 
 export interface SlugCandidate {
   rowNumber: number
   slug: string
   name: string
-  description: string | null
+  description?: string | null
   isActive: boolean
 }
 
@@ -34,11 +35,11 @@ export interface ParsedSlugEntity {
 
 export function parseSlugSheet(
   workbook: ExcelJS.Workbook,
-  sheetName: string
+  sheetName: string,
+  options?: { parseDescription?: boolean }
 ): ParsedSlugEntity {
-  const { rows, errors } = extractSheet(workbook, sheetName, [
-    ...SLUG_ENTITY_COLUMNS,
-  ])
+  const columns = options?.parseDescription ? SLUG_ENTITY_COLUMNS_WITH_DESC : SLUG_ENTITY_COLUMNS
+  const { rows, errors } = extractSheet(workbook, sheetName, [...columns])
   const invalidRows = new Set<number>()
   for (const e of errors) if (e.row > 1) invalidRows.add(e.row)
 
@@ -63,7 +64,7 @@ export function parseSlugSheet(
 
     const slug = normalized.get(r) ?? ""
     const name = row.values.name.trim()
-    const description = row.values.description.trim()
+    const description = options?.parseDescription ? (row.values.description?.trim() ?? "") : ""
     const isActiveRaw = row.values.isActive.trim()
 
     if (!row.values.slug.trim()) fail("slug", "Slug is required")
@@ -75,7 +76,7 @@ export function parseSlugSheet(
     if (!name) fail("name", "Name is required")
     else if (name.length > 200) fail("name", "Name exceeds 200 characters")
 
-    if (description.length > 1000)
+    if (options?.parseDescription && description.length > 1000)
       fail("description", "Description exceeds 1000 characters")
 
     let isActive = true
@@ -86,13 +87,16 @@ export function parseSlugSheet(
     }
 
     if (rowInvalid) continue
-    candidates.push({
+    const candidate: SlugCandidate = {
       rowNumber: r,
       slug,
       name,
-      description: description || null,
       isActive,
-    })
+    }
+    if (options?.parseDescription) {
+      candidate.description = description || null
+    }
+    candidates.push(candidate)
   }
 
   return { totalRows: rows.length, candidates, invalidRows, errors }

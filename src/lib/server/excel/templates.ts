@@ -15,7 +15,7 @@ import { STEP_TYPES } from "./products"
 import { PRODUCTS_SHEET, PRODUCTS_COLUMNS } from "./products"
 import { DIAGNOSES_SHEET } from "./diagnoses"
 import { ROUTINE_TYPES_SHEET } from "./routine-types"
-import { SLUG_ENTITY_COLUMNS } from "./slug-entity"
+import { SLUG_ENTITY_COLUMNS, SLUG_ENTITY_COLUMNS_WITH_DESC } from "./slug-entity"
 import {
   ROUTINES_SHEET,
   ROUTINE_DIAGNOSES_SHEET,
@@ -142,20 +142,21 @@ export async function buildProductsTemplate(): Promise<Buffer> {
 async function buildSlugTemplate(
   sheetName: string,
   title: string,
-  noun: string
+  noun: string,
+  columns: readonly string[]
 ): Promise<Buffer> {
   const wb = newWorkbook()
   addInstructions(wb, title, [
     `Fill in the ${sheetName} sheet. One ${noun} per row.`,
-    "Columns: slug, name, description, isActive.",
+    `Columns: ${columns.join(", ")}.`,
     "slug is the stable business identifier and must be unique within the file.",
     "Slugs are normalized to lowercase-hyphen form automatically.",
     "Existing slugs are skipped (never overwritten). Only new slugs are created.",
     "isActive accepts TRUE/FALSE (defaults to TRUE when left blank).",
     "Do not use formulas — enter plain values only. Maximum 5000 rows.",
   ])
-  const ws = addDataSheet(wb, sheetName, SLUG_ENTITY_COLUMNS)
-  const isActiveIdx = SLUG_ENTITY_COLUMNS.indexOf("isActive") + 1
+  const ws = addDataSheet(wb, sheetName, columns)
+  const isActiveIdx = columns.indexOf("isActive") + 1
   applyInlineDropdown(ws, isActiveIdx, BOOLEAN_VALUES)
   return workbookToBuffer(wb)
 }
@@ -164,7 +165,8 @@ export function buildDiagnosesTemplate(): Promise<Buffer> {
   return buildSlugTemplate(
     DIAGNOSES_SHEET,
     "AOMI Diagnoses Import — Instructions",
-    "diagnosis"
+    "diagnosis",
+    SLUG_ENTITY_COLUMNS_WITH_DESC
   )
 }
 
@@ -172,7 +174,8 @@ export function buildRoutineTypesTemplate(): Promise<Buffer> {
   return buildSlugTemplate(
     ROUTINE_TYPES_SHEET,
     "AOMI Routine Types Import — Instructions",
-    "routine type"
+    "routine type",
+    SLUG_ENTITY_COLUMNS
   )
 }
 

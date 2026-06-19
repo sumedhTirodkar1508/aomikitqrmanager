@@ -206,7 +206,7 @@ export function Combobox({
                   onClick={() => commit(option)}
                   onMouseEnter={() => setHighlighted(index)}
                   className={cn(
-                    "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm font-medium outline-none",
+                    "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium outline-none",
                     isActive && "bg-accent text-accent-foreground"
                   )}
                 >

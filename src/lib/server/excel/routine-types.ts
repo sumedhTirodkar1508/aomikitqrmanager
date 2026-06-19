@@ -2,11 +2,7 @@
  * Routine Types Excel importer.
  *
  * Workbook: AOMI_ROUTINE_TYPES_TEMPLATE_V1.xlsx — sheets Instructions, Routine Types.
- * Columns: slug, name, description, isActive. Slug is the stable identifier.
- *
- * Note: RoutineType has no `description` column in the schema, so an imported
- * description is validated for length but not persisted (kept in the template
- * for parity and future use).
+ * Columns: slug, name, isActive. Slug is the stable identifier.
  */
 
 import { prisma } from "@/lib/prisma"
