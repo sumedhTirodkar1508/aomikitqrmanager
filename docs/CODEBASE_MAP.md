@@ -1,6 +1,6 @@
 # AOMI Kit QR Manager — Codebase Map
 
-> Navigation aid for agents and developers. Architecture facts live here; behavioral rules live in `CLAUDE.md`.
+> Navigation aid for agents and developers. Architecture facts live here; behavioral rules live in `AGENTS.md`.
 > Current source code is always authoritative — verify paths and types before editing.
 
 ---
@@ -119,8 +119,8 @@ AOMI Kit QR Manager is a Next.js web application that manages the full lifecycle
 │   ├── graph.json             # machine-readable graph (gitignored)
 │   └── graph.html             # interactive visualization (gitignored)
 ├── .env.example               # template — copy to .env and fill in values
-├── CLAUDE.md                  # canonical agent rules
-├── AGENTS.md                  # Codex/other agent entry point
+├── AGENTS.md                  # canonical agent rules
+├── CLAUDE.md                  # Claude pointer to AGENTS.md
 └── package.json
 ```
 
@@ -681,8 +681,8 @@ generated output is not already present.
 
 | File | Contents |
 |---|---|
-| `CLAUDE.md` | Canonical rules for agents (auth, Prisma, invariants, security, git) |
-| `AGENTS.md` | Entry point for Codex and other agents |
+| `AGENTS.md` | Canonical rules for agents (auth, Prisma, invariants, security, git) |
+| `CLAUDE.md` | Claude pointer to `AGENTS.md` |
 | `docs/CODEBASE_MAP.md` | This file — architecture navigation |
 | `docs/API.md` | Mobile REST API specification |
 | `docs/SETUP.md` | Local dev setup and env vars |

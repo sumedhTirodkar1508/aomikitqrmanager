@@ -1,56 +1,13 @@
-# AOMI Kit QR Manager — Agent Entry Point
+Before performing any work in this repository:
 
-## Required context
-
-Before doing any work, read the complete root file:
-
-- [CLAUDE.md](./CLAUDE.md)
+1. Read the complete root [`CLAUDE.md`](./CLAUDE.md).
+2. Treat `CLAUDE.md` as the canonical project context and engineering rulebook.
+3. Then read [`docs/CODEBASE_MAP.md`](./docs/CODEBASE_MAP.md) and only the documentation and source files relevant to the task.
 
 @CLAUDE.md
 
-`CLAUDE.md` is the canonical project-context and engineering-instructions file for this repository.
+If `graphify-out/graph.json` exists, use Graphify for initial repository navigation, then verify all findings against current source code.
 
-Then read only the relevant sections of:
+Do not proceed until `CLAUDE.md` has been read. Do not duplicate its rules in this file.
 
-- [Codebase map](./docs/CODEBASE_MAP.md)
-- [README](./README.md)
-- other task-relevant files under `docs/`
-
-If `graphify-out/graph.json` exists, prefer Graphify queries for initial navigation instead of broadly reading the repository. Verify Graphify results against current source code before editing.
-
-## Core rules
-
-- Inspect `git status` before making changes.
-- Preserve authentication, authorization, domain invariants, and API contracts.
-- Never expose secrets or print complete environment values.
-- Do not modify generated Prisma files.
-- Schema changes require proper migrations.
-- Do not use broad destructive database cleanup.
-- Do not reapply the shadcn preset without explicit approval.
-- Do not commit or push unless explicitly requested.
-- Make focused changes and avoid unrelated refactors.
-
-## Verification
-
-For significant changes run:
-
-```bash
-npm run lint
-npm run build
-```
-
-Also run when relevant:
-
-```bash
-npm run test:qr-import
-npx prisma migrate status
-git diff --check
-```
-
-Do not claim manual browser testing unless it was actually completed.
-
-## Documentation
-
-Update `docs/CODEBASE_MAP.md` only when architecture, routes, domain flows, or major dependencies change.
-
-Refresh Graphify after substantial structural changes.
+If any instruction conflicts with repository reality, current source code is authoritative and the conflict must be reported before editing.
