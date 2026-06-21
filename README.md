@@ -26,6 +26,7 @@ mobile REST API that activated kits read from.
 | Routines          | `/admin/routines`, `/admin/routines/new`, `/admin/routines/[id]`  |
 | QR tokens         | `/admin/qr-tokens`, `…/generate`, `…/import`, `/admin/batches`    |
 | Token CSV export  | `/api/admin/qr-tokens/export`                                     |
+| Catalog entities  | XLSX template/import workflows                                    |
 | Excel templates   | `GET /api/admin/templates/[entity]`                              |
 | Seller assignment | `/seller`, `/seller/assign` (searchable selectors; manual/USB/camera scan) |
 | Mobile API        | `GET /api/qr/[token]`, `POST /api/qr/activate`                    |

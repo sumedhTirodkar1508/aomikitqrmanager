@@ -195,12 +195,12 @@ export async function commitProductsImport(
   const existing = await existingSkuSet(parsed.candidates.map((c) => c.sku))
 
   const toCreate = parsed.candidates.filter((c) => !existing.has(c.sku))
-  const skipped = parsed.candidates.length - toCreate.length
+  let skipped = parsed.candidates.length - toCreate.length
 
   let created = 0
   if (toCreate.length > 0) {
     await prisma.$transaction(async (tx) => {
-      await tx.product.createMany({
+      const result = await tx.product.createMany({
         data: toCreate.map((c) => ({
           sku: c.sku,
           name: c.name,
@@ -212,7 +212,9 @@ export async function commitProductsImport(
         // DB unique constraint is the final guard against a concurrent insert.
         skipDuplicates: true,
       })
-      created = toCreate.length
+      created = result.count
+      skipped += toCreate.length - created
+
       await writeAuditLog(
         userId,
         "IMPORT",

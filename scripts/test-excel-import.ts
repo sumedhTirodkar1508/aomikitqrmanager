@@ -484,13 +484,41 @@ async function runDbTests() {
     const newAuditIds = [...auditIdsAfter].filter((id) => !auditIdsBefore.has(id))
     assert(newAuditIds.length === 1, "commit writes exactly one audit entry")
 
-    // Re-commit same buffer → all skipped, no new audit.
+    // Re-commit same buffer → all skipped via existingSkuSet, no new audit.
     const result2 = await commitProductsImport(buffer, null)
     assert(result2.created === 0 && result2.skipped === 2, "re-commit skips existing")
     const auditIdsAfter2 = await importAuditIds()
     assert(
       [...auditIdsAfter2].filter((id) => !auditIdsAfter.has(id)).length === 0,
       "no audit entry when nothing is created"
+    )
+
+    // Test concurrent import of a new buffer to trigger createMany skipDuplicates.
+    const skusC = [`IMP-${runId}-C1`, `IMP-${runId}-C2`]
+    const wbC = makeWorkbook([
+      {
+        name: "Products",
+        headers: PRODUCT_HEADERS,
+        rows: [
+          [skusC[0], `Imp ${runId} C1`, "CLEANSER", "Face", "", "TRUE"],
+          [skusC[1], `Imp ${runId} C2`, "TONER", "Face", "", "TRUE"],
+        ],
+      },
+    ])
+    const arrC = (await wbC.xlsx.writeBuffer()) as WriteBuf
+    const bufferC = Buffer.from(arrC as ArrayBuffer)
+
+    const [resA, resB] = await Promise.all([
+      commitProductsImport(bufferC, null),
+      commitProductsImport(bufferC, null),
+    ])
+    assert(
+      resA.created + resB.created === 2,
+      "concurrent import exactly creates 2 records"
+    )
+    assert(
+      resA.skipped + resB.skipped === 2,
+      "concurrent duplicate accurately increments skipped count via createMany skipDuplicates"
     )
 
     // Rollback: a create + throw inside one transaction leaves nothing behind.
@@ -508,7 +536,7 @@ async function runDbTests() {
     assert(probe === null, "transaction rollback leaves no partial data")
 
     // Cleanup only this run's exact records.
-    await prisma.product.deleteMany({ where: { sku: { in: [...skus, probeSku] } } })
+    await prisma.product.deleteMany({ where: { sku: { in: [...skus, ...skusC, probeSku] } } })
     if (newAuditIds.length > 0) {
       await prisma.auditLog.deleteMany({ where: { id: { in: newAuditIds } } })
     }

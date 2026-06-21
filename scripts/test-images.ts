@@ -152,16 +152,77 @@ async function runDbTests() {
     })
     imageIds.push(imgC.id, imgA.id, imgB.id)
 
-    // ── I: reorderProductImages normalizes to 0-indexed ──────────────────────
-    console.log("I — reorderProductImages normalizes sort orders to 0-indexed array")
+    // ── I: reorderProductImages validation and normalization ────────────────
+    console.log("I — reorderProductImages validates permutations and normalizes sort orders")
     {
-      // Mirror the reorder logic from image-actions.ts directly.
-      const newOrder = [imgC.id, imgB.id, imgA.id]
-      await prisma.$transaction(
-        newOrder.map((id, index) =>
-          prisma.productImage.update({ where: { id }, data: { sortOrder: index } })
+      async function mockReorder(productId: string, orderedIds: string[]) {
+        const images = await prisma.productImage.findMany({
+          where: { productId },
+          select: { id: true },
+        })
+        const ownedIds = new Set(images.map((i) => i.id))
+
+        if (orderedIds.length !== ownedIds.size) {
+          return { error: "Invalid image order: count mismatch" }
+        }
+
+        const seenIds = new Set<string>()
+        for (const id of orderedIds) {
+          if (!ownedIds.has(id)) {
+            return { error: "Invalid image order: unknown or unowned image ID" }
+          }
+          if (seenIds.has(id)) {
+            return { error: "Invalid image order: duplicate ID" }
+          }
+          seenIds.add(id)
+        }
+
+        await prisma.$transaction(
+          orderedIds.map((id, index) =>
+            prisma.productImage.update({
+              where: { id },
+              data: { sortOrder: index },
+            })
+          )
         )
-      )
+        return { ok: true }
+      }
+
+      // Test missing ID
+      const missingRes = await mockReorder(product.id, [imgC.id, imgA.id])
+      assert(missingRes.error === "Invalid image order: count mismatch", "rejects missing IDs")
+
+      // Test extra ID
+      const extraRes = await mockReorder(product.id, [imgC.id, imgA.id, imgB.id, "fake-id"])
+      assert(extraRes.error === "Invalid image order: count mismatch", "rejects extra IDs")
+
+      // Test duplicate ID
+      const dupRes = await mockReorder(product.id, [imgC.id, imgC.id, imgA.id])
+      assert(dupRes.error === "Invalid image order: duplicate ID", "rejects duplicate IDs")
+
+      // Test foreign ID
+      const foreignProduct = await prisma.product.create({
+        data: { name: uid("PRODF"), stepType: "CLEANSER", active: true },
+      })
+      productIds.push(foreignProduct.id)
+      const foreignImg = await prisma.productImage.create({
+        data: {
+          productId: foreignProduct.id,
+          imageUrl: "https://example.com/f.jpg",
+          imageType: "FRONT",
+          sortOrder: 0,
+        },
+      })
+      imageIds.push(foreignImg.id)
+
+      const foreignRes = await mockReorder(product.id, [imgC.id, imgB.id, foreignImg.id])
+      assert(foreignRes.error === "Invalid image order: unknown or unowned image ID", "rejects foreign IDs")
+
+      // Successful reorder
+      const newOrder = [imgC.id, imgB.id, imgA.id]
+      const successRes = await mockReorder(product.id, newOrder)
+      assert(successRes.ok === true, "successful reorder works")
+
       const after = await prisma.productImage.findMany({
         where: { productId: product.id },
         orderBy: { sortOrder: "asc" },

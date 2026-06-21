@@ -8,7 +8,6 @@ import { previewDiagnosesExcel, commitDiagnosesExcel } from "./import-actions"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -25,6 +24,7 @@ import {
   updateDiagnosis,
   toggleDiagnosisActive,
 } from "./actions"
+import { ToggleActiveForm } from "@/components/admin/toggle-active-form"
 import DiagnosisForm from "./_components/diagnosis-form"
 import { Input } from "@/components/ui/input"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -241,12 +241,7 @@ export default async function DiagnosesPage({
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <form action={toggleDiagnosisActive}>
-                                <input type="hidden" name="id" value={d.id} />
-                                <AlertDialogAction type="submit" variant={d.active ? "destructive" : "default"}>
-                                  {d.active ? "Deactivate" : "Activate"}
-                                </AlertDialogAction>
-                              </form>
+                              <ToggleActiveForm action={toggleDiagnosisActive} id={d.id} isActive={d.active} />
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>

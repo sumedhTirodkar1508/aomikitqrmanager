@@ -8,7 +8,6 @@ import { previewProductsExcel, commitProductsExcel } from "./import-actions"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -22,6 +21,7 @@ import { PageHeader } from "@/components/ui/page-header"
 import { EmptyState } from "@/components/ui/empty-state"
 import { toggleProductActive, createProduct, updateProduct } from "./actions"
 import ProductForm from "./_components/product-form"
+import { ToggleActiveForm } from "@/components/admin/toggle-active-form"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -278,12 +278,7 @@ export default async function ProductsPage({
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <form action={toggleProductActive}>
-                                <input type="hidden" name="id" value={p.id} />
-                                <AlertDialogAction type="submit" variant={p.active ? "destructive" : "default"}>
-                                  {p.active ? "Deactivate" : "Activate"}
-                                </AlertDialogAction>
-                              </form>
+                              <ToggleActiveForm action={toggleProductActive} id={p.id} isActive={p.active} />
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>

@@ -49,17 +49,28 @@ function formatRow(t: {
   token: string
   status: string
   batchId: string | null
+  batch: { batchName: string | null; source: string } | null
   createdAt: Date
+  assignedAt: Date | null
+  activatedAt: Date | null
+  voidedAt: Date | null
+  notes: string | null
 }): string {
   return [
     csvEscape(t.token),
     csvEscape(t.status),
     csvEscape(t.batchId ?? ""),
+    csvEscape(t.batch?.batchName ?? ""),
     csvEscape(t.createdAt.toISOString()),
+    csvEscape(t.assignedAt ? t.assignedAt.toISOString() : ""),
+    csvEscape(t.activatedAt ? t.activatedAt.toISOString() : ""),
+    csvEscape(t.voidedAt ? t.voidedAt.toISOString() : ""),
+    csvEscape(t.batch?.source ?? ""),
+    csvEscape(t.notes ?? ""),
   ].join(",") + "\n"
 }
 
-const HEADER = "token,status,batchId,createdAt\n"
+const HEADER = "token,status,batchId,batchName,createdAt,assignedAt,activatedAt,voidedAt,source,notes\n"
 
 // Simulate the streaming by running chunks through the formatter.
 function simulateExport(rows: Parameters<typeof formatRow>[0][]): string {
@@ -80,11 +91,16 @@ console.log("\n── A: empty export ──")
 
 console.log("\n── B: one row ──")
 {
-  const row = { token: "AOMI-KIT-ABC123", status: "AVAILABLE", batchId: "batch-1", createdAt: new Date("2026-01-01T00:00:00.000Z") }
+  const row = { token: "AOMI-KIT-ABC123", status: "AVAILABLE", batchId: "batch-1", batch: { batchName: "Batch 1", source: "INTERNAL" }, createdAt: new Date("2026-01-01T00:00:00.000Z"), assignedAt: null, activatedAt: null, voidedAt: null, notes: "Test Note" }
   const out = simulateExport([row])
   const lines = out.trimEnd().split("\n")
-  assert(lines[0] === "token,status,batchId,createdAt", "B – header is correct")
-  assert(lines[1] === "AOMI-KIT-ABC123,AVAILABLE,batch-1,2026-01-01T00:00:00.000Z", "B – data row is correct")
+  assert(lines[0] === "token,status,batchId,batchName,createdAt,assignedAt,activatedAt,voidedAt,source,notes", "B – header is correct")
+  const expected = "AOMI-KIT-ABC123,AVAILABLE,batch-1,Batch 1,2026-01-01T00:00:00.000Z,,,,INTERNAL,Test Note"
+  if (lines[1] !== expected) {
+    console.error(`Expected: ${expected}`)
+    console.error(`Actual:   ${lines[1]}`)
+  }
+  assert(lines[1] === expected, "B – data row is correct")
   assert(lines.length === 2, "B – exactly two lines")
 }
 
@@ -92,7 +108,7 @@ console.log("\n── B: one row ──")
 
 console.log("\n── C: commas in field values ──")
 {
-  const row = { token: "A,B", status: "AVAILABLE", batchId: null, createdAt: new Date("2026-01-01T00:00:00.000Z") }
+  const row = { token: "A,B", status: "AVAILABLE", batchId: null, batch: null, createdAt: new Date("2026-01-01T00:00:00.000Z"), assignedAt: null, activatedAt: null, voidedAt: null, notes: null }
   const out = simulateExport([row])
   const dataLine = out.trimEnd().split("\n")[1]
   assert(dataLine.startsWith('"A,B"'), "C – token with comma is quoted")
@@ -102,7 +118,7 @@ console.log("\n── C: commas in field values ──")
 
 console.log("\n── D: double-quotes in field values ──")
 {
-  const row = { token: 'say "hi"', status: "AVAILABLE", batchId: null, createdAt: new Date("2026-01-01T00:00:00.000Z") }
+  const row = { token: 'say "hi"', status: "AVAILABLE", batchId: null, batch: null, createdAt: new Date("2026-01-01T00:00:00.000Z"), assignedAt: null, activatedAt: null, voidedAt: null, notes: null }
   const out = simulateExport([row])
   const dataLine = out.trimEnd().split("\n")[1]
   assert(dataLine.startsWith('"say ""hi"""'), "D – token with quotes is RFC-4180 escaped")
@@ -112,7 +128,7 @@ console.log("\n── D: double-quotes in field values ──")
 
 console.log("\n── E: embedded newlines in field values ──")
 {
-  const row = { token: "A\nB", status: "AVAILABLE", batchId: null, createdAt: new Date("2026-01-01T00:00:00.000Z") }
+  const row = { token: "A\nB", status: "AVAILABLE", batchId: null, batch: null, createdAt: new Date("2026-01-01T00:00:00.000Z"), assignedAt: null, activatedAt: null, voidedAt: null, notes: null }
   const out = simulateExport([row])
   // The newline is inside quotes — the CSV has more than 2 data-visible lines
   // when split naively, but the token field is quoted.
@@ -127,14 +143,19 @@ console.log("\n── F: multiple chunks ──")
     token: `TOKEN-${String(i).padStart(4, "0")}`,
     status: "AVAILABLE" as const,
     batchId: "batch-1",
+    batch: null,
     createdAt: new Date(2026, 0, 1, 0, 0, i),
+    assignedAt: null,
+    activatedAt: null,
+    voidedAt: null,
+    notes: null
   })
   const rows = Array.from({ length: 1200 }, (_, i) => makeRow(i))
   const out = simulateExport(rows)
   const lines = out.trimEnd().split("\n")
-  assert(lines[0] === "token,status,batchId,createdAt", "F – header appears once at top")
+  assert(lines[0] === "token,status,batchId,batchName,createdAt,assignedAt,activatedAt,voidedAt,source,notes", "F – header appears once at top")
   assert(lines.length === 1201, `F – 1200 data rows + 1 header = 1201 lines, got ${lines.length}`)
-  const headerCount = lines.filter(l => l === "token,status,batchId,createdAt").length
+  const headerCount = lines.filter(l => l === "token,status,batchId,batchName,createdAt,assignedAt,activatedAt,voidedAt,source,notes").length
   assert(headerCount === 1, "F – header appears exactly once")
 }
 
@@ -187,9 +208,9 @@ console.log("\n── I: unknown status rejected ──")
 console.log("\n── J: deterministic ordering ──")
 {
   const rows = [
-    { token: "C", status: "AVAILABLE", batchId: null, createdAt: new Date("2026-01-03") },
-    { token: "A", status: "AVAILABLE", batchId: null, createdAt: new Date("2026-01-01") },
-    { token: "B", status: "AVAILABLE", batchId: null, createdAt: new Date("2026-01-02") },
+    { token: "C", status: "AVAILABLE", batchId: null, batch: null, createdAt: new Date("2026-01-03"), assignedAt: null, activatedAt: null, voidedAt: null, notes: null },
+    { token: "A", status: "AVAILABLE", batchId: null, batch: null, createdAt: new Date("2026-01-01"), assignedAt: null, activatedAt: null, voidedAt: null, notes: null },
+    { token: "B", status: "AVAILABLE", batchId: null, batch: null, createdAt: new Date("2026-01-02"), assignedAt: null, activatedAt: null, voidedAt: null, notes: null },
   ]
   // Sort in (createdAt ASC) order as the export query does
   const sorted = [...rows].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
@@ -219,7 +240,7 @@ console.log("\n── K+L: authorization logic ──")
 
 console.log("\n── M: null batchId ──")
 {
-  const row = { token: "TOKEN-X", status: "AVAILABLE", batchId: null, createdAt: new Date("2026-01-01T00:00:00.000Z") }
+  const row = { token: "TOKEN-X", status: "AVAILABLE", batchId: null, batch: null, createdAt: new Date("2026-01-01T00:00:00.000Z"), assignedAt: null, activatedAt: null, voidedAt: null, notes: null }
   const out = simulateExport([row])
   const dataLine = out.trimEnd().split("\n")[1]
   // third field should be empty string (between the two commas)

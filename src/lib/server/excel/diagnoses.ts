@@ -40,12 +40,12 @@ export async function commitDiagnosesImport(
   const existing = await existingSlugSet(parsed.candidates.map((c) => c.slug))
 
   const toCreate = parsed.candidates.filter((c) => !existing.has(c.slug))
-  const skipped = parsed.candidates.length - toCreate.length
+  let skipped = parsed.candidates.length - toCreate.length
 
   let created = 0
   if (toCreate.length > 0) {
     await prisma.$transaction(async (tx) => {
-      await tx.diagnosis.createMany({
+      const result = await tx.diagnosis.createMany({
         data: toCreate.map((c) => ({
           slug: c.slug,
           name: c.name,
@@ -54,7 +54,9 @@ export async function commitDiagnosesImport(
         })),
         skipDuplicates: true,
       })
-      created = toCreate.length
+      created = result.count
+      skipped += toCreate.length - created
+
       await writeAuditLog(
         userId,
         "IMPORT",

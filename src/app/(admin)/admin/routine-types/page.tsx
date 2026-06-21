@@ -8,7 +8,6 @@ import { previewRoutineTypesExcel, commitRoutineTypesExcel } from "./import-acti
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -25,6 +24,7 @@ import {
   updateRoutineType,
   toggleRoutineTypeActive,
 } from "./actions"
+import { ToggleActiveForm } from "@/components/admin/toggle-active-form"
 import RoutineTypeForm from "./_components/routine-type-form"
 import { Input } from "@/components/ui/input"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -242,12 +242,7 @@ export default async function RoutineTypesPage({
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <form action={toggleRoutineTypeActive}>
-                                <input type="hidden" name="id" value={rt.id} />
-                                <AlertDialogAction type="submit" variant={rt.active ? "destructive" : "default"}>
-                                  {rt.active ? "Deactivate" : "Activate"}
-                                </AlertDialogAction>
-                              </form>
+                              <ToggleActiveForm action={toggleRoutineTypeActive} id={rt.id} isActive={rt.active} />
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>

@@ -22,6 +22,14 @@ function requiredEnv(name: string) {
 }
 
 async function main() {
+  const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+  if (isProduction && process.env.ALLOW_DEV_SEED !== "true") {
+    console.error("🛑 Refusing to run seed script in production environment.");
+    console.error("If you truly need to run this seed in production, set ALLOW_DEV_SEED=true.");
+    console.error("Note: For Phase 1, production admins should be created via controlled manual bootstrap.");
+    process.exit(1);
+  }
+
   console.log("🌱 Seeding database...");
 
   // ── Users ─────────────────────────────────────────────────────────────────

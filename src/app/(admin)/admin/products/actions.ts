@@ -154,7 +154,7 @@ export async function updateProduct(
   redirect(`/admin/products/${id}`)
 }
 
-export async function toggleProductActive(formData: FormData) {
+export async function toggleProductActive(formData: FormData): Promise<{ error?: string; ok?: boolean } | void> {
   const session = await requireRole("ADMIN")
   const id = formData.get("id") as string
 
@@ -162,9 +162,23 @@ export async function toggleProductActive(formData: FormData) {
     where: { id },
     select: { active: true, name: true },
   })
-  if (!product) return
+  if (!product) return { error: "Product not found" }
 
   const next = !product.active
+
+  if (!next) {
+    const activeUsages = await prisma.routineTemplateStep.count({
+      where: {
+        defaultProductId: id,
+        template: { active: true }
+      }
+    })
+
+    if (activeUsages > 0) {
+      return { error: `Cannot deactivate: This product is used by ${activeUsages} active routine${activeUsages !== 1 ? 's' : ''}. Remove or replace it first.` }
+    }
+  }
+
   await prisma.product.update({ where: { id }, data: { active: next } })
 
   await writeAuditLog(
@@ -177,4 +191,5 @@ export async function toggleProductActive(formData: FormData) {
 
   revalidatePath("/admin/products")
   revalidatePath(`/admin/products/${id}`)
+  return { ok: true }
 }

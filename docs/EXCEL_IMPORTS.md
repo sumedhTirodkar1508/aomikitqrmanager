@@ -1,5 +1,11 @@
 # Excel Imports
 
+This application uses Excel (`.xlsx`) to bulk-load catalog entities.
+> **Note on Phase 1 Scope**:
+> - QR tokens: **CSV import/export** only.
+> - Catalog entities (Products, Diagnoses, Routine Types, Routines): **XLSX template/import workflows**.
+
+## Supported Entities
 Each admin catalog page has its own Excel template and its own import flow.
 There is **no** combined catalog workbook — products, diagnoses, routine types,
 and routines are imported independently.

@@ -93,7 +93,7 @@ export async function updateRoutineType(
   redirect("/admin/routine-types")
 }
 
-export async function toggleRoutineTypeActive(formData: FormData) {
+export async function toggleRoutineTypeActive(formData: FormData): Promise<{ error?: string; ok?: boolean } | void> {
   const session = await requireRole("ADMIN")
   const id = formData.get("id") as string
 
@@ -101,9 +101,22 @@ export async function toggleRoutineTypeActive(formData: FormData) {
     where: { id },
     select: { active: true, name: true },
   })
-  if (!rt) return
+  if (!rt) return { error: "Routine type not found" }
 
   const next = !rt.active
+
+  if (!next) {
+    const activeUsages = await prisma.routineTemplate.count({
+      where: {
+        routineTypeId: id,
+        active: true
+      }
+    })
+    if (activeUsages > 0) {
+      return { error: `Cannot deactivate: This routine type is used by ${activeUsages} active routine${activeUsages !== 1 ? 's' : ''}.` }
+    }
+  }
+
   await prisma.routineType.update({ where: { id }, data: { active: next } })
 
   await writeAuditLog(
@@ -115,4 +128,5 @@ export async function toggleRoutineTypeActive(formData: FormData) {
   )
 
   revalidatePath("/admin/routine-types")
+  return { ok: true }
 }

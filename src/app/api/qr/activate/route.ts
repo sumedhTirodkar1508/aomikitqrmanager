@@ -3,13 +3,24 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { checkMobileApiKey } from "@/lib/mobile-api"
 import { normalizeToken } from "@/lib/token"
+import { resolveActivationRace } from "@/lib/server/activation-race"
 
 const NO_STORE = { "Cache-Control": "no-store" } as const
 
-const BodySchema = z.object({
-  token: z.string().trim().min(1).max(500),
-  externalUserId: z.string().trim().max(200).optional(),
-})
+const BodySchema = z
+  .object({
+    token: z.string().trim().min(1).max(500).optional(),
+    qr_token: z.string().trim().min(1).max(500).optional(),
+    externalUserId: z.string().trim().max(200).optional(),
+    external_user_id: z.string().trim().max(200).optional(),
+  })
+  .refine((data) => data.token || data.qr_token, {
+    message: "token is required",
+  })
+  .transform((data) => ({
+    token: (data.token || data.qr_token)!,
+    externalUserId: data.externalUserId ?? data.external_user_id,
+  }))
 
 export async function POST(req: NextRequest) {
   const authError = checkMobileApiKey(req)
@@ -71,6 +82,13 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  if (!record.package) {
+    return NextResponse.json(
+      { error: "Token has no assigned package to activate" },
+      { status: 409, headers: NO_STORE }
+    )
+  }
+
   // Race-safe transition ASSIGNED -> ACTIVATED.
   const result = await prisma.$transaction(async (tx) => {
     const claim = await tx.qRToken.updateMany({
@@ -81,15 +99,18 @@ export async function POST(req: NextRequest) {
       return { raced: true as const }
     }
 
-    await tx.package.updateMany({
-      where: { qrTokenId: record.id },
+    const pkgUpdate = await tx.package.updateMany({
+      where: { qrTokenId: record.id, status: "ASSIGNED" },
       data: { status: "ACTIVATED" },
     })
+    if (pkgUpdate.count === 0) {
+      throw new Error("PACKAGE_MISSING")
+    }
 
     await tx.activationEvent.create({
       data: {
         qrTokenId: record.id,
-        packageId: record.package?.id ?? null,
+        packageId: record.package!.id,
         externalUserId,
         eventType: "ACTIVATED",
         metadataJson: externalUserId ? { externalUserId } : undefined,
@@ -111,23 +132,28 @@ export async function POST(req: NextRequest) {
       select: { token: true, status: true, activatedAt: true },
     })
     return { raced: false as const, updated }
+  }).catch((err) => {
+    if (err instanceof Error && err.message === "PACKAGE_MISSING") {
+      return { packageMissing: true as const }
+    }
+    throw err
   })
 
+  if ("packageMissing" in result) {
+    return NextResponse.json(
+      { error: "Token has no valid assigned package to activate" },
+      { status: 409, headers: NO_STORE }
+    )
+  }
+
   if (result.raced) {
-    // Someone activated concurrently — re-read and report idempotent success.
+    // Someone activated or modified concurrently — re-read.
     const fresh = await prisma.qRToken.findUnique({
       where: { id: record.id },
       select: { token: true, status: true, activatedAt: true },
     })
-    return NextResponse.json(
-      {
-        token: fresh?.token ?? token,
-        status: fresh?.status ?? "ACTIVATED",
-        activatedAt: fresh?.activatedAt ?? null,
-        message: "Token already activated",
-      },
-      { headers: NO_STORE }
-    )
+
+    return resolveActivationRace(fresh)
   }
 
   return NextResponse.json(

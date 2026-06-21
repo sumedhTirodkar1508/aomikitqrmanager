@@ -115,11 +115,16 @@ export default function AssignFlow({ diagnoses }: { diagnoses: Diagnosis[] }) {
 
   function handleLoadPreview(id: string) {
     startTransition(async () => {
-      const p = await getRoutinePreview(id)
-      if (!p) {
+      const res = await getRoutinePreview(id)
+      if (!res) {
         toast.error("Could not load routine")
         return
       }
+      if (!res.ok) {
+        toast.error(res.error)
+        return
+      }
+      const p = res.preview
       setRoutineId(id)
       setPreview(p)
       // Default selection per step.

@@ -2,8 +2,8 @@ import { requireRole } from "@/lib/auth-helpers"
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { updateProduct, toggleProductActive } from "../actions"
+import { ToggleActiveButton } from "@/components/admin/toggle-active-form"
 import ProductForm from "../_components/product-form"
 import ProductImages from "./_components/product-images"
 import ReplacementRules from "./_components/replacement-rules"
@@ -98,21 +98,7 @@ export default async function EditProductPage({
           </div>
         }
         action={
-          <form action={toggleProductActive}>
-            <input type="hidden" name="id" value={product.id} />
-            <Button
-              type="submit"
-              variant="outline"
-              size="sm"
-              className={
-                product.active
-                  ? "border-destructive/25 text-destructive hover:bg-destructive/10"
-                  : "border-success text-success-foreground hover:bg-success"
-              }
-            >
-              {product.active ? "Deactivate" : "Activate"}
-            </Button>
-          </form>
+          <ToggleActiveButton action={toggleProductActive} id={product.id} isActive={product.active} />
         }
       />
 

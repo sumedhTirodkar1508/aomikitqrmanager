@@ -214,6 +214,29 @@ async function validateNestedRefs(
   return null
 }
 
+// ─── Deactivation guards mirrored from admin actions ───────────────────────
+
+async function canDeactivateProduct(id: string): Promise<boolean> {
+  const activeUsages = await prisma.routineTemplateStep.count({
+    where: { defaultProductId: id, template: { active: true } },
+  })
+  return activeUsages === 0
+}
+
+async function canDeactivateRoutineType(id: string): Promise<boolean> {
+  const activeUsages = await prisma.routineTemplate.count({
+    where: { routineTypeId: id, active: true },
+  })
+  return activeUsages === 0
+}
+
+async function canDeactivateDiagnosis(id: string): Promise<boolean> {
+  const activeUsages = await prisma.routineTemplateDiagnosis.count({
+    where: { diagnosisId: id, template: { active: true } },
+  })
+  return activeUsages === 0
+}
+
 // ─── Test runner ─────────────────────────────────────────────────────────────
 
 async function runTests() {
@@ -582,6 +605,35 @@ async function runTests() {
     assert(pkgT !== null, "T: Package row created for valid assignment with correct diagnosis")
   }
 
+  // ── TESTS U-Z — Deactivation guards ────────────────────────────────────────
+  console.log("\n=== TESTS U-Z: Deactivation guards ===")
+  const rtTypeDeact = await prisma.routineType.create({ data: { name: "Test RT", slug: uid("RT-DEACT") } })
+  const diagDeact = await prisma.diagnosis.create({ data: { name: "Test Diag", slug: uid("DIAG-DEACT") } })
+  const prodDeact = await prisma.product.create({ data: { name: "Test Prod", stepType: "CLEANSER", sku: uid("PROD") } })
+
+  const routineDeactActive = await prisma.routineTemplate.create({
+    data: {
+      name: "Active Routine",
+      routineTypeId: rtTypeDeact.id,
+      active: true,
+      diagnoses: { create: [{ diagnosisId: diagDeact.id }] },
+      steps: { create: [{ stepNumber: 1, stepType: "CLEANSER", defaultProductId: prodDeact.id }] },
+    },
+  })
+
+  // U: active routine blocks deactivation of its components
+  assert((await canDeactivateProduct(prodDeact.id)) === false, "U: product deactivation blocked when used by active routine")
+  assert((await canDeactivateRoutineType(rtTypeDeact.id)) === false, "U: routine type deactivation blocked when used by active routine")
+  assert((await canDeactivateDiagnosis(diagDeact.id)) === false, "U: diagnosis deactivation blocked when used by active routine")
+
+  // Make the routine inactive
+  await prisma.routineTemplate.update({ where: { id: routineDeactActive.id }, data: { active: false } })
+
+  // V: inactive routine allows deactivation
+  assert((await canDeactivateProduct(prodDeact.id)) === true, "V: product deactivation allowed when used only by inactive routine")
+  assert((await canDeactivateRoutineType(rtTypeDeact.id)) === true, "V: routine type deactivation allowed when used only by inactive routine")
+  assert((await canDeactivateDiagnosis(diagDeact.id)) === true, "V: diagnosis deactivation allowed when used only by inactive routine")
+
   // ── Cleanup ────────────────────────────────────────────────────────────
   console.log("\n=== Cleanup ===")
 
@@ -594,6 +646,12 @@ async function runTests() {
   // RoutineTemplateDiagnosis rows cascade-delete with the template.
   await prisma.routineTemplate.delete({ where: { id: routineLT.id } })
   await prisma.diagnosis.deleteMany({ where: { id: { in: [diagActive.id, diagInactive.id, diagUnrelated.id] } } })
+
+  // Deactivation test records
+  await prisma.routineTemplate.delete({ where: { id: routineDeactActive.id } })
+  await prisma.routineType.delete({ where: { id: rtTypeDeact.id } })
+  await prisma.diagnosis.delete({ where: { id: diagDeact.id } })
+  await prisma.product.delete({ where: { id: prodDeact.id } })
 
   // Phase 1 records
   await prisma.auditLog.deleteMany({ where: { entityType: "QRToken", entityId: { in: [tokenC.id, tokenD.id, tokenE.id, tokenF.id] } } })

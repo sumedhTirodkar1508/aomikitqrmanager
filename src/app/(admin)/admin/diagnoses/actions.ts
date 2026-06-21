@@ -105,7 +105,7 @@ export async function updateDiagnosis(
   redirect("/admin/diagnoses")
 }
 
-export async function toggleDiagnosisActive(formData: FormData) {
+export async function toggleDiagnosisActive(formData: FormData): Promise<{ error?: string; ok?: boolean } | void> {
   const session = await requireRole("ADMIN")
   const id = formData.get("id") as string
 
@@ -113,9 +113,22 @@ export async function toggleDiagnosisActive(formData: FormData) {
     where: { id },
     select: { active: true, name: true },
   })
-  if (!diagnosis) return
+  if (!diagnosis) return { error: "Diagnosis not found" }
 
   const next = !diagnosis.active
+
+  if (!next) {
+    const activeUsages = await prisma.routineTemplateDiagnosis.count({
+      where: {
+        diagnosisId: id,
+        template: { active: true }
+      }
+    })
+    if (activeUsages > 0) {
+      return { error: `Cannot deactivate: This diagnosis is used by ${activeUsages} active routine${activeUsages !== 1 ? 's' : ''}.` }
+    }
+  }
+
   await prisma.diagnosis.update({ where: { id }, data: { active: next } })
 
   await writeAuditLog(
@@ -127,4 +140,5 @@ export async function toggleDiagnosisActive(formData: FormData) {
   )
 
   revalidatePath("/admin/diagnoses")
+  return { ok: true }
 }

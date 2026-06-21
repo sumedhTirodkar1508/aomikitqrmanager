@@ -119,8 +119,8 @@ AOMI Kit QR Manager is a Next.js web application that manages the full lifecycle
 │   ├── graph.json             # machine-readable graph (gitignored)
 │   └── graph.html             # interactive visualization (gitignored)
 ├── .env.example               # template — copy to .env and fill in values
-├── AGENTS.md                  # canonical agent rules
-├── CLAUDE.md                  # Claude pointer to AGENTS.md
+├── AGENTS.md                  # Claude pointer to CLAUDE.md
+├── CLAUDE.md                  # canonical agent rules
 └── package.json
 ```
 
@@ -690,8 +690,8 @@ generated output is not already present.
 
 | File | Contents |
 |---|---|
-| `AGENTS.md` | Canonical rules for agents (auth, Prisma, invariants, security, git) |
-| `CLAUDE.md` | Claude pointer to `AGENTS.md` |
+| `AGENTS.md` | Claude pointer to `CLAUDE.md` |
+| `CLAUDE.md` | Canonical rules for agents (auth, Prisma, invariants, security, git) |
 | `docs/CODEBASE_MAP.md` | This file — architecture navigation |
 | `docs/API.md` | Mobile REST API specification |
 | `docs/SETUP.md` | Local dev setup and env vars |

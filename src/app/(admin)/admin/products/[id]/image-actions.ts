@@ -178,10 +178,24 @@ export async function reorderProductImages(
     select: { id: true },
   })
   const ownedIds = new Set(images.map((i) => i.id))
-  const filtered = orderedIds.filter((id) => ownedIds.has(id))
+
+  if (orderedIds.length !== ownedIds.size) {
+    return { error: "Invalid image order: count mismatch" }
+  }
+
+  const seenIds = new Set<string>()
+  for (const id of orderedIds) {
+    if (!ownedIds.has(id)) {
+      return { error: "Invalid image order: unknown or unowned image ID" }
+    }
+    if (seenIds.has(id)) {
+      return { error: "Invalid image order: duplicate ID" }
+    }
+    seenIds.add(id)
+  }
 
   await prisma.$transaction(
-    filtered.map((id, index) =>
+    orderedIds.map((id, index) =>
       prisma.productImage.update({
         where: { id },
         data: { sortOrder: index },
@@ -190,7 +204,7 @@ export async function reorderProductImages(
   )
 
   await writeAuditLog(user.id, "REORDER_IMAGES", "Product", productId, {
-    order: filtered,
+    order: orderedIds,
   })
 
   revalidatePath(`/admin/products/${productId}`)

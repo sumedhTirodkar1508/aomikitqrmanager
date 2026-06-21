@@ -19,7 +19,6 @@ export function validateEnv(): void {
     "DATABASE_URL",
     "AUTH_SECRET",
     "NEXT_PUBLIC_SUPABASE_URL",
-    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
     "MOBILE_API_KEY",
   ];

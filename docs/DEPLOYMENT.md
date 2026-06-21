@@ -16,7 +16,8 @@ DDL well):
 
 ```bash
 DIRECT_URL="postgresql://...:5432/postgres" npm run db:migrate
-npm run db:seed   # optional: seed admin + sample catalog
+# To seed a production database, you must explicitly opt-in:
+ALLOW_DEV_SEED=true npm run db:seed   # optional: seed admin + sample catalog
 ```
 
 In CI/CD you may prefer `prisma migrate deploy` instead of `migrate dev`.
@@ -33,7 +34,7 @@ In CI/CD you may prefer `prisma migrate deploy` instead of `migrate dev`.
    | `AUTH_SECRET` | `openssl rand -base64 32` |
    | `AUTH_URL` | `https://<your-domain>` |
    | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | anon/publishable key |
+
    | `SUPABASE_SERVICE_ROLE_KEY` | service-role key (server-only) |
    | `MOBILE_API_KEY` | long random string |
    | `SUPABASE_KEEPALIVE_KEY` | long random string (must differ from `MOBILE_API_KEY`) |

@@ -105,17 +105,21 @@ export type RoutinePreview = {
   steps: RoutineStepPreview[]
 }
 
+export type RoutinePreviewResult =
+  | { ok: true; preview: RoutinePreview }
+  | { ok: false; error: string }
+
 // Internal: builds the authoritative preview data without an auth check.
 // Called from both getRoutinePreview (which adds auth) and confirmAssignment
 // (which has already verified auth) so the option-building logic stays in one place.
-async function loadRoutinePreviewData(routineId: string): Promise<RoutinePreview | null> {
+async function loadRoutinePreviewData(routineId: string): Promise<RoutinePreviewResult | null> {
   const routine = await prisma.routineTemplate.findUnique({
     where: { id: routineId },
     include: {
       steps: {
         orderBy: { stepNumber: "asc" },
         include: {
-          defaultProduct: { select: { id: true, name: true, sku: true } },
+          defaultProduct: { select: { id: true, name: true, sku: true, active: true, stepType: true } },
         },
       },
     },
@@ -131,18 +135,10 @@ async function loadRoutinePreviewData(routineId: string): Promise<RoutinePreview
     ? await prisma.productReplacement.findMany({
         where: { sourceProductId: { in: defaultProductIds }, active: true },
         include: {
-          replacement: { select: { id: true, name: true, sku: true, active: true } },
+          replacement: { select: { id: true, name: true, sku: true, active: true, stepType: true } },
         },
       })
     : []
-
-  // Active products grouped by step type for same-type swaps.
-  const stepTypes = Array.from(new Set(routine.steps.map((s) => s.stepType)))
-  const sameTypeProducts = await prisma.product.findMany({
-    where: { active: true, stepType: { in: stepTypes as StepType[] } },
-    select: { id: true, name: true, sku: true, stepType: true },
-    orderBy: { name: "asc" },
-  })
 
   // Collect all product IDs that will appear as options, then batch-fetch their
   // primary images in one query to avoid N+1.
@@ -153,7 +149,6 @@ async function loadRoutinePreviewData(routineId: string): Promise<RoutinePreview
   for (const rule of replacementRules) {
     if (rule.replacement.active) allOptionIds.add(rule.replacement.id)
   }
-  for (const p of sameTypeProducts) allOptionIds.add(p.id)
 
   const primaryImages = await prisma.productImage.findMany({
     where: { productId: { in: Array.from(allOptionIds) } },
@@ -168,71 +163,68 @@ async function loadRoutinePreviewData(routineId: string): Promise<RoutinePreview
     }
   }
 
-  const steps: RoutineStepPreview[] = routine.steps.map((step) => {
+  const steps: RoutineStepPreview[] = []
+  for (const step of routine.steps) {
+    if (!step.defaultProductId || !step.defaultProduct) {
+      return { ok: false, error: `Step ${step.stepNumber} is missing a default product and cannot be assigned.` }
+    }
+    if (!step.defaultProduct.active) {
+      return { ok: false, error: `Step ${step.stepNumber} uses an inactive default product and cannot be assigned.` }
+    }
+
     const options = new Map<string, StepProductOption>()
 
-    // Default product is always an option.
-    if (step.defaultProduct) {
-      options.set(step.defaultProduct.id, {
-        id: step.defaultProduct.id,
-        name: step.defaultProduct.name,
-        sku: step.defaultProduct.sku,
-        isReplacement: false,
-        primaryImageUrl: primaryImageMap.get(step.defaultProduct.id) ?? null,
-      })
-    }
-
-    // Same step-type products (active, any of the same type).
-    for (const p of sameTypeProducts) {
-      if (p.stepType !== step.stepType) continue
-      if (options.has(p.id)) continue
-      options.set(p.id, {
-        id: p.id,
-        name: p.name,
-        sku: p.sku,
-        isReplacement: p.id !== step.defaultProductId,
-        primaryImageUrl: primaryImageMap.get(p.id) ?? null,
-      })
-    }
+    // Default product is active, add it.
+    options.set(step.defaultProduct.id, {
+      id: step.defaultProduct.id,
+      name: step.defaultProduct.name,
+      sku: step.defaultProduct.sku,
+      isReplacement: false,
+      primaryImageUrl: primaryImageMap.get(step.defaultProduct.id) ?? null,
+    })
 
     // Explicit replacement rules for this step's default product.
-    if (step.defaultProductId) {
-      for (const rule of replacementRules) {
-        if (rule.sourceProductId !== step.defaultProductId) continue
-        if (!rule.replacement.active) continue
-        if (options.has(rule.replacement.id)) continue
-        options.set(rule.replacement.id, {
-          id: rule.replacement.id,
-          name: rule.replacement.name,
-          sku: rule.replacement.sku,
-          isReplacement: true,
-          primaryImageUrl: primaryImageMap.get(rule.replacement.id) ?? null,
-        })
-      }
+    for (const rule of replacementRules) {
+      if (rule.sourceProductId !== step.defaultProductId) continue
+      if (!rule.replacement.active) continue
+      if (rule.replacement.stepType !== step.defaultProduct.stepType) continue
+      if (rule.stepType !== step.defaultProduct.stepType) continue
+      if (options.has(rule.replacement.id)) continue
+
+      options.set(rule.replacement.id, {
+        id: rule.replacement.id,
+        name: rule.replacement.name,
+        sku: rule.replacement.sku,
+        isReplacement: true,
+        primaryImageUrl: primaryImageMap.get(rule.replacement.id) ?? null,
+      })
     }
 
-    return {
+    steps.push({
       stepId: step.id,
       stepNumber: step.stepNumber,
       stepType: step.stepType,
       instruction: step.instruction,
       defaultProductId: step.defaultProductId,
-      defaultProductName: step.defaultProduct?.name ?? null,
+      defaultProductName: step.defaultProduct.name,
       options: Array.from(options.values()),
-    }
-  })
+    })
+  }
 
   return {
-    id: routine.id,
-    name: routine.name,
-    generalInstructions: routine.generalInstructions,
-    steps,
+    ok: true,
+    preview: {
+      id: routine.id,
+      name: routine.name,
+      generalInstructions: routine.generalInstructions,
+      steps,
+    },
   }
 }
 
 export async function getRoutinePreview(
   routineId: string
-): Promise<RoutinePreview | null> {
+): Promise<RoutinePreviewResult | null> {
   await requireAnyRole("SELLER", "ADMIN")
   return loadRoutinePreviewData(routineId)
 }
@@ -266,10 +258,14 @@ export async function confirmAssignment(input: unknown): Promise<ConfirmResult> 
 
   // Re-compute authoritative options from the database — do not trust client-supplied
   // product/step combinations.
-  const preview = await loadRoutinePreviewData(routineId)
-  if (!preview) {
+  const res = await loadRoutinePreviewData(routineId)
+  if (!res) {
     return { ok: false, error: "Routine is no longer available" }
   }
+  if (!res.ok) {
+    return { ok: false, error: res.error }
+  }
+  const preview = res.preview
 
   // Verify the diagnosis is active and linked to this routine at commit time.
   // A single query handles unknown diagnosis, unlinked diagnosis, and inactive diagnosis.

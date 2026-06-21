@@ -261,22 +261,157 @@ async function main() {
     assert(count === 0, "isolated product has 0 blocking rules")
   }
 
-  // ── L: seller confirmAssignment rejects product not in option set ─────────
-  console.log("L — seller confirmAssignment rejects product not in allowed set")
+  // ── L: seller preview generation limits options to explicitly configured ──
+  console.log("L — seller preview generator strictly enforces replacement rules and default product requirements")
   {
-    // The key invariant: the server re-derives options from DB; a client cannot
-    // submit an arbitrary productId. We simulate this by checking that the toner
-    // product is NOT in the cleanser step's options.
-    const stepType: StepType = "CLEANSER"
-    const sameTypeOptions = await prisma.product.findMany({
-      where: { active: true, stepType },
-      select: { id: true },
+    type MockPreviewResult =
+      | { ok: true; preview: { steps: { stepId: string, options: { id: string, isReplacement: boolean }[] }[] } }
+      | { ok: false; error: string };
+
+    async function mockLoadRoutinePreviewData(routineId: string): Promise<MockPreviewResult | null> {
+      const routine = await prisma.routineTemplate.findUnique({
+        where: { id: routineId },
+        include: {
+          steps: {
+            orderBy: { stepNumber: "asc" },
+            include: {
+              defaultProduct: { select: { id: true, name: true, sku: true, active: true, stepType: true } },
+            },
+          },
+        },
+      })
+      if (!routine || !routine.active) return null
+
+      const defaultProductIds = routine.steps
+        .map((s) => s.defaultProductId)
+        .filter((id): id is string => !!id)
+
+      const replacementRules = defaultProductIds.length
+        ? await prisma.productReplacement.findMany({
+            where: { sourceProductId: { in: defaultProductIds }, active: true },
+            include: {
+              replacement: { select: { id: true, name: true, sku: true, active: true, stepType: true } },
+            },
+          })
+        : []
+
+      const steps: { stepId: string, options: { id: string, isReplacement: boolean }[] }[] = []
+      for (const step of routine.steps) {
+        if (!step.defaultProductId || !step.defaultProduct) {
+          return { ok: false, error: "missing default product" }
+        }
+        if (!step.defaultProduct.active) {
+          return { ok: false, error: "inactive default product" }
+        }
+
+        const options = new Map<string, { id: string, isReplacement: boolean }>()
+        options.set(step.defaultProduct.id, {
+          id: step.defaultProduct.id,
+          isReplacement: false,
+        })
+
+        for (const rule of replacementRules) {
+          if (rule.sourceProductId !== step.defaultProductId) continue
+          if (!rule.replacement.active) continue
+          if (rule.replacement.stepType !== step.defaultProduct.stepType) continue
+          if (rule.stepType !== step.defaultProduct.stepType) continue
+          options.set(rule.replacement.id, {
+            id: rule.replacement.id,
+            isReplacement: true,
+          })
+        }
+        steps.push({ stepId: step.id, options: Array.from(options.values()) })
+      }
+      return { ok: true, preview: { steps } }
+    }
+
+    // Create a routine to test assignments
+    const rtType = await prisma.routineType.create({
+      data: { name: uid("RTTYPE"), slug: uid("RTTYPE").toLowerCase() }
     })
-    const allowedIds = new Set(sameTypeOptions.map((p) => p.id))
-    assert(
-      !allowedIds.has(tonerA.id),
-      "tonerA not in CLEANSER step options — cross-type product rejected at confirm"
-    )
+    const routine = await prisma.routineTemplate.create({
+      data: {
+        name: uid("ROUTINE"),
+        active: true,
+        routineTypeId: rtType.id
+      },
+    })
+
+    const cleanserL = await createProduct("CLEANSER", "-L")
+    productIds.push(cleanserL.id)
+
+    const step1 = await prisma.routineTemplateStep.create({
+      data: {
+        routineTemplateId: routine.id,
+        stepNumber: 1,
+        stepType: "CLEANSER",
+        defaultProductId: cleanserL.id,
+      },
+    })
+
+    // Test: Normal default product works, no other same-step-type products are included
+    const preview1 = await mockLoadRoutinePreviewData(routine.id)
+    assert(preview1?.ok === true, "normal default product works")
+    if (preview1 && preview1.ok) {
+      const stepOptions = preview1.preview.steps[0].options
+      assert(stepOptions.length === 1, "only default product included by default")
+      assert(stepOptions[0].id === cleanserL.id, "default product is correct")
+    }
+
+    // Test: Missing default product blocks assignment
+    const step2 = await prisma.routineTemplateStep.create({
+      data: {
+        routineTemplateId: routine.id,
+        stepNumber: 2,
+        stepType: "TONER",
+      },
+    })
+    const preview2 = await mockLoadRoutinePreviewData(routine.id)
+    assert(preview2?.ok === false && preview2.error === "missing default product", "missing default product blocks assignment")
+
+    await prisma.routineTemplateStep.delete({ where: { id: step2.id } })
+
+    // Test: Inactive default product blocks assignment
+    await prisma.product.update({ where: { id: cleanserL.id }, data: { active: false } })
+    const preview3 = await mockLoadRoutinePreviewData(routine.id)
+    assert(preview3?.ok === false && preview3.error === "inactive default product", "inactive default product blocks assignment")
+    await prisma.product.update({ where: { id: cleanserL.id }, data: { active: true } })
+
+    // Test: Explicit same-step-type replacement is selectable
+    // Create rule: cleanserL -> cleanserB
+    const rule1 = await tryAddReplacement(cleanserL.id, cleanserB.id)
+    if (rule1.ok) ruleIds.push(rule1.ruleId)
+    const preview4 = await mockLoadRoutinePreviewData(routine.id)
+    if (preview4 && preview4.ok) {
+      const stepOptions = preview4.preview.steps[0].options
+      assert(stepOptions.length === 2, "explicit replacement is included")
+      assert(stepOptions.some((o: { id: string }) => o.id === cleanserB.id), "cleanserB is an option")
+    }
+
+    // Test: Inactive replacement product is not selectable
+    await prisma.product.update({ where: { id: cleanserB.id }, data: { active: false } })
+    const preview5 = await mockLoadRoutinePreviewData(routine.id)
+    if (preview5 && preview5.ok) {
+      const stepOptions = preview5.preview.steps[0].options
+      assert(stepOptions.length === 1, "inactive replacement is excluded")
+      assert(!stepOptions.some((o: { id: string }) => o.id === cleanserB.id), "cleanserB is not an option")
+    }
+    await prisma.product.update({ where: { id: cleanserB.id }, data: { active: true } })
+
+    // Test: Client-submitted arbitrary product ID is rejected at confirmation
+    // We simulate `confirmAssignment` checking `preview.steps[...].options`.
+    // TonerA is NOT an option for the cleanser step.
+    const preview6 = await mockLoadRoutinePreviewData(routine.id)
+    if (preview6 && preview6.ok) {
+      const stepOptions = preview6.preview.steps[0].options
+      const isAllowed = stepOptions.some((o: { id: string }) => o.id === tonerA.id)
+      assert(!isAllowed, "cross-step-type arbitrary product is rejected at confirmation")
+    }
+
+    // Cleanup
+    await prisma.routineTemplateStep.delete({ where: { id: step1.id } })
+    await prisma.routineTemplate.delete({ where: { id: routine.id } })
+    await prisma.routineType.delete({ where: { id: rtType.id } })
   }
 
   // ── M: audit detects valid rule ───────────────────────────────────────────

@@ -38,6 +38,24 @@ export async function GET(
               description: true,
               durationDays: true,
               generalInstructions: true,
+              routineType: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
+              },
+              diagnoses: {
+                select: {
+                  diagnosis: {
+                    select: {
+                      id: true,
+                      name: true,
+                      slug: true,
+                    },
+                  },
+                },
+              },
             },
           },
           products: { orderBy: { stepNumber: "asc" } },
@@ -102,7 +120,7 @@ export async function GET(
       category: true,
       functionDescription: true,
       images: {
-        orderBy: [{ imageType: "asc" }, { sortOrder: "asc" }],
+        orderBy: { sortOrder: "asc" },
         select: { imageUrl: true, imageType: true },
       },
     },
@@ -112,8 +130,7 @@ export async function GET(
   function imageUrlFor(productId: string): string | null {
     const p = productMap.get(productId)
     if (!p || p.images.length === 0) return null
-    const front = p.images.find((i) => i.imageType === "FRONT")
-    return (front ?? p.images[0]).imageUrl
+    return p.images[0].imageUrl
   }
 
   return NextResponse.json(
@@ -126,7 +143,15 @@ export async function GET(
         id: pkg.id,
         status: pkg.status,
       },
-      routine: pkg.template,
+      routine: {
+        id: pkg.template.id,
+        name: pkg.template.name,
+        description: pkg.template.description,
+        durationDays: pkg.template.durationDays,
+        generalInstructions: pkg.template.generalInstructions,
+        routineType: pkg.template.routineType,
+        diagnoses: pkg.template.diagnoses.map((d) => d.diagnosis),
+      },
       steps: pkg.products.map((sp) => {
         const p = productMap.get(sp.productId)
         return {

@@ -212,10 +212,20 @@ console.log("\n── OPS-001: requireEnv validation ──")
 
 console.log("\n── API-002: activate endpoint schema ──")
 
-const ActivateSchema = z.object({
-  token: z.string().trim().min(1).max(500),
-  externalUserId: z.string().trim().max(200).optional(),
-})
+const ActivateSchema = z
+  .object({
+    token: z.string().trim().min(1).max(500).optional(),
+    qr_token: z.string().trim().min(1).max(500).optional(),
+    externalUserId: z.string().trim().max(200).optional(),
+    external_user_id: z.string().trim().max(200).optional(),
+  })
+  .refine((data) => data.token || data.qr_token, {
+    message: "token is required",
+  })
+  .transform((data) => ({
+    token: (data.token || data.qr_token)!,
+    externalUserId: data.externalUserId ?? data.external_user_id,
+  }))
 
 assert(
   !ActivateSchema.safeParse({ token: "a".repeat(501) }).success,
@@ -236,6 +246,18 @@ assert(
 assert(
   !ActivateSchema.safeParse({ token: "ok", externalUserId: "x".repeat(201) }).success,
   "S – externalUserId > 200 chars rejected"
+)
+
+assert(
+  ActivateSchema.safeParse({ qr_token: "ABC-123" }).success &&
+    ActivateSchema.parse({ qr_token: "ABC-123" }).token === "ABC-123",
+  "S2 – qr_token alias works"
+)
+
+assert(
+  ActivateSchema.safeParse({ token: "ok", external_user_id: "user123" }).success &&
+    ActivateSchema.parse({ token: "ok", external_user_id: "user123" }).externalUserId === "user123",
+  "S3 – external_user_id alias works"
 )
 
 // ─── AUTH-003 / SEC-004 / TOKEN-001 / OPS-002: production hardening ─────────

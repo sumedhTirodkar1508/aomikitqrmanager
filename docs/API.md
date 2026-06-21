@@ -3,6 +3,25 @@
 Endpoints consumed by the AOMI mobile app. All requests must include the shared
 secret header.
 
+## Current Implementation Status
+
+The currently implemented REST API surface is strictly limited to the following endpoints required for Phase 1 mobile integration and internal functionality:
+
+- `GET /api/qr/[token]`
+- `POST /api/qr/activate`
+- `GET /api/admin/qr-tokens/export`
+- `GET /api/admin/templates/[entity]`
+- `POST /api/internal/keepalive`
+- Auth.js handler under `/api/auth/[...nextauth]`
+
+**Important Note on Unbuilt Endpoints:**
+The following planned endpoints are **intentionally not implemented** as REST APIs because the web application uses Next.js Server Components, Server Actions, and Prisma for direct data access:
+- `GET /api/routines`
+- `GET /api/products`
+- `POST /api/qr/assign`
+
+Do not build these old planned endpoints unless the mobile team explicitly requires them.
+
 ## Authentication
 
 ```
@@ -58,7 +77,19 @@ Look up a token and, when assigned/activated, return its full package payload.
     "name": "Acne Recovery — Basic",
     "description": "…",
     "durationDays": 30,
-    "generalInstructions": "Apply morning and night."
+    "generalInstructions": "Apply morning and night.",
+    "routineType": {
+      "id": "rtyp_123",
+      "name": "Acne Protocol",
+      "slug": "acne-protocol"
+    },
+    "diagnoses": [
+      {
+        "id": "diag_123",
+        "name": "Hormonal Acne",
+        "slug": "hormonal-acne"
+      }
+    ]
   },
   "steps": [
     {
@@ -80,9 +111,12 @@ Look up a token and, when assigned/activated, return its full package payload.
 }
 ```
 
-`imageUrl` and `primaryImageUrl` both point to the product's primary image (FRONT
-type or lowest `sortOrder`), or `null` if no image exists. Both fields are present
+`imageUrl` and `primaryImageUrl` both point to the product's primary image (lowest
+`sortOrder`), or `null` if no image exists. Both fields are present
 for backward compatibility; prefer `primaryImageUrl` in new client code.
+
+Note: `routineType` and `diagnoses` fields were added in a later update. Older
+clients that do not expect these fields can safely ignore them.
 
 ### Errors
 - `404` — token not found
@@ -108,8 +142,17 @@ already `ACTIVATED` token returns success without side effects.
   "externalUserId": "mobile-user-123"
 }
 ```
-`externalUserId` is optional. `token` is trimmed and capped at 500 characters.
-`externalUserId` is trimmed and capped at 200 characters.
+For compatibility with standard snake_case HTTP payloads, the server also accepts
+`qr_token` and `external_user_id` as aliases:
+```json
+{
+  "qr_token": "AOMI-KIT-7F3K9Q",
+  "external_user_id": "mobile-user-123"
+}
+```
+
+`externalUserId` (or `external_user_id`) is optional. `token` (or `qr_token`) is
+trimmed and capped at 500 characters. User IDs are trimmed and capped at 200 characters.
 
 ### Success
 ```json

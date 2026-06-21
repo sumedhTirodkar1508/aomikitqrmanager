@@ -27,7 +27,7 @@ AUTH_URL="http://localhost:3000"
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL="https://<project-ref>.supabase.co"
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="<anon/publishable key>"
+
 SUPABASE_SERVICE_ROLE_KEY="<service role key — server only>"
 
 # Mobile REST API
@@ -44,7 +44,7 @@ SUPABASE_KEEPALIVE_KEY="<long random string>"
 | `AUTH_SECRET` | NextAuth | Signs JWT session tokens. |
 | `AUTH_URL` | NextAuth | App base URL. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Server + client | Project URL. |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Client | Safe to expose. |
+
 | `SUPABASE_SERVICE_ROLE_KEY` | `src/lib/supabase-server.ts` only | **Never** import into a client component. |
 | `MOBILE_API_KEY` | `/api/qr/*` | Sent by the mobile app as `x-api-key`. |
 | `SUPABASE_KEEPALIVE_KEY` | `POST /api/internal/keepalive` | Sent by the keep-alive workflow as `x-keepalive-key`. Must differ from `MOBILE_API_KEY`. |
@@ -58,9 +58,11 @@ from `DATABASE_URL` in `src/lib/prisma.ts`.
 ```bash
 npm run db:generate    # prisma generate
 npm run db:migrate     # prisma migrate dev  (uses DIRECT_URL)
-npm run db:seed        # tsx prisma/seed.ts
+npm run db:seed        # tsx prisma/seed.ts  (see note below for production)
 npm run db:studio      # prisma studio
 ```
+
+**Note on Production Seeding**: By default, `npm run db:seed` will refuse to run if `NODE_ENV=production` or `VERCEL_ENV=production` to protect the live database. To seed a production database, you must explicitly pass `ALLOW_DEV_SEED=true npm run db:seed`. For Phase 1, production admins should be created via a controlled manual bootstrap rather than the seed script.
 
 > Import the client from `@/generated/prisma/client`, never `@prisma/client`.
 
@@ -73,9 +75,10 @@ npm run db:studio      # prisma studio
 
 ## Upload limits
 
-Server Actions accept up to **6 MB** per request (framework body limit). The
-application enforces a 5 MB limit for individual files (product images and CSV
-imports). The extra headroom accommodates multipart/form-data encoding overhead.
+Server Actions accept up to **12 MB** per request (framework body limit). The
+application enforces a **10 MB** limit for Excel imports, and a **5 MB** limit
+for individual files (product images and QR CSV imports). The extra headroom
+accommodates multipart/form-data encoding overhead.
 
 To change the limit, edit `experimental.serverActions.bodySizeLimit` in
 `next.config.ts` and keep the per-file guard in the relevant action consistent.
